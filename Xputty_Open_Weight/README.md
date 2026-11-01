@@ -11,7 +11,7 @@ Install **64-bit Python 3.11** and extract a distribution ZIP.
 | System | Start |
 |---|---|
 | Windows x64 | Double-click `START-WINDOWS.cmd` |
-| macOS Intel / Apple Silicon | Open `START-MAC.command` (or `sh start.sh` in Terminal) |
+| macOS Apple Silicon | Open `START-MAC.command` (or `sh start.sh` in Terminal) |
 | Linux x64 | Run `sh start.sh` |
 
 First start creates an isolated `.venv` and installs requirements. Chrome opens at **http://127.0.0.1:8788** with the worker access key. Another installed browser is used if Chrome is absent. Keep the worker running while building; closing a browser tab does not stop a build. `python launch.py --no-browser` starts without opening a window. The old VOX studio on port 8787 is unaffected.
@@ -31,7 +31,7 @@ Manual URL capture processes **one public HTML page per click**, preserving orig
 
 Uploads: 256 MiB/file, 8 GiB of active material/project. Edits: 16 MiB. A source set locks when training starts to keep resumed weights tied to the same corpus. Projects live under `storage/` or `XOW_DATA`. Access keys are generated locally and are never shipped in packages. This is a **single-owner worker**, not multi-tenant hosting: everyone with its key can access its projects.
 
-`XOW_DEVICE=auto` uses CUDA when available; `cpu` or `cuda` selects it explicitly. MPS/Apple GPU training is not implemented: macOS uses CPU. CUDA requires a compatible PyTorch installation and driver. The tiny model may not benefit from a large GPU.
+`XOW_DEVICE=auto` uses CUDA when available; `cpu` or `cuda` selects it explicitly. MPS/Apple GPU training is not implemented: macOS uses CPU. Intel Mac and Windows ARM acceptance are not claimed. CUDA requires a compatible PyTorch installation and driver. The tiny model may not benefit from a large GPU.
 
 ## Deployment packages
 

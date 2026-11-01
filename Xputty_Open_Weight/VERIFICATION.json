@@ -11,11 +11,11 @@
     "macos_missing_affinity_api_simulation": "passed"
   },
   "platform_acceptance": {
-    "windows": "local tests passed",
-    "linux": "pending GitHub Actions",
-    "macos": "pending GitHub Actions",
+    "windows": "GitHub Actions x64 acceptance passed",
+    "linux": "GitHub Actions x64 acceptance passed",
+    "macos": "GitHub Actions Apple Silicon acceptance passed",
     "cuda": "not executed; no CUDA hardware on local test host",
-    "docker": "pending GitHub Actions; Docker is not installed locally"
+    "docker": "GitHub Actions CPU image build and model-load smoke test passed"
   },
   "distribution": "OS source/launcher bundles include Vosk and Tika; Python/runtime dependencies install at first launch, not native executables",
   "limitations": [
@@ -30,5 +30,14 @@
     "project storage",
     "virtual environments",
     "trained research weights"
+  ],
+  "shell_launcher_syntax": "bash -n passed",
+  "ci_run": "https://github.com/openrunt/StackDevAi/actions/runs/41349283688",
+  "ci_verified_commit": "04714acd3d0862788521f24b1700952851954291",
+  "release_url": "https://github.com/openrunt/StackDevAi/releases/tag/xow-v0.3.0",
+  "unverified_hardware": [
+    "CUDA GPU",
+    "Intel Mac",
+    "Windows ARM"
   ]
 }
