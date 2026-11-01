@@ -1,0 +1,16 @@
+.venv/
+storage/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+dist/
+*.zip
+*.log
+.env
+.env.*
+models/
+tools/*.jar
+*.pt
+*.gguf
+*.safetensors
+verification/

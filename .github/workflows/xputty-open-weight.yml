@@ -1,0 +1,67 @@
+name: Xputty Open Weight
+on:
+  push:
+    branches: [xputty-open-weight]
+    paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml']
+  pull_request:
+    paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml']
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            package: windows
+          - os: ubuntu-latest
+            package: linux
+          - os: macos-latest
+            package: macos
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: Xputty_Open_Weight
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: Xputty_Open_Weight/requirements*.txt
+      - if: runner.os != 'macOS'
+        run: python -m pip install "torch>=2.6,<3" --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest tests -q
+        env:
+          VOX_DEVICE: cpu
+          VOX_OLLAMA_VERIFY: '0'
+      - run: node --check web/app.js
+      - run: python tools/fetch_assets.py
+      - run: python tools/build_packages.py --kind ${{ matrix.package }} --assets .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xputty-open-weight-${{ matrix.package }}
+          path: Xputty_Open_Weight/dist/*
+  deployment:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Xputty_Open_Weight
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install certifi
+      - run: python tools/fetch_assets.py
+      - run: python tools/build_packages.py --kind deployment --assets .
+      - run: python tools/build_packages.py --kind shared-hosting
+      - run: docker compose config --quiet
+      - run: docker build -t xow-acceptance .
+      - run: docker run --rm --entrypoint python xow-acceptance -c "from vox.model import TinyLlama,ModelConfig; print(TinyLlama(ModelConfig()).n_parameters())"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xputty-open-weight-deployment
+          path: Xputty_Open_Weight/dist/*

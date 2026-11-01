@@ -1,0 +1,34 @@
+{
+  "name": "Xputty Open Weight",
+  "version": "0.3.0",
+  "local_acceptance": {
+    "platform": "Windows-10-10.0.19045-SP0",
+    "tests_passed": 14,
+    "full_build": "passed",
+    "transformers_parity": "passed",
+    "capture_edit_remove_restore_replace": "passed",
+    "packaging_privacy_and_unix_permissions": "passed",
+    "macos_missing_affinity_api_simulation": "passed"
+  },
+  "platform_acceptance": {
+    "windows": "local tests passed",
+    "linux": "pending GitHub Actions",
+    "macos": "pending GitHub Actions",
+    "cuda": "not executed; no CUDA hardware on local test host",
+    "docker": "pending GitHub Actions; Docker is not installed locally"
+  },
+  "distribution": "OS source/launcher bundles include Vosk and Tika; Python/runtime dependencies install at first launch, not native executables",
+  "limitations": [
+    "Research model output remains fragmented",
+    "Single-owner worker; not multi-tenant",
+    "Chrome visual automation unavailable",
+    "Binary phase ledger and PyQoS integration not claimed"
+  ],
+  "publication_exclusions": [
+    "access keys",
+    "user captures",
+    "project storage",
+    "virtual environments",
+    "trained research weights"
+  ]
+}
