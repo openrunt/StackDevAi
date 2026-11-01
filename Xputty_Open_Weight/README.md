@@ -68,4 +68,4 @@ See `VERIFICATION.json` for actual tested scope, not inferred platform support. 
 
 The phase journal is SHA-linked and timestamped. It is not represented as a completed binary phase ledger or PyQoS implementation. The release does not embed Shadow Core weights or execute its router. User-provided research concepts remain separate from demonstrated capabilities.
 
-Project-wide redistribution licensing has not been selected; third-party assets retain their licenses.
+Code follows the repository’s existing AGPL-3.0 license; see LICENSE. Third-party assets retain their respective licenses.

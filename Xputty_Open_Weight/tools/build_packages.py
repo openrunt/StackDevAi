@@ -31,6 +31,7 @@ FILES = {
     ".gitignore",
     ".dockerignore",
     "VERSION",
+    "LICENSE",
     "VERIFICATION.json",
 }
 
