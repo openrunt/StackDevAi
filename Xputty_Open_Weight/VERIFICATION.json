@@ -1,9 +1,9 @@
 {
   "name": "Xputty Open Weight",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "local_acceptance": {
     "platform": "Windows-10-10.0.19045-SP0",
-    "tests_passed": 14,
+    "tests_passed": 16,
     "full_build": "passed",
     "transformers_parity": "passed",
     "capture_edit_remove_restore_replace": "passed",
@@ -39,5 +39,12 @@
     "CUDA GPU",
     "Intel Mac",
     "Windows ARM"
-  ]
+  ],
+  "bootstrap_fix": {
+    "python314_rejected": true,
+    "dependency_preflight": true,
+    "old_environments_backed_up": true,
+    "codespaces_python": "3.11",
+    "fresh_install_ci": "pending"
+  }
 }

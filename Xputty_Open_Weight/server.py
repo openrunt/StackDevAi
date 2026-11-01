@@ -455,12 +455,23 @@ if __name__ == "__main__":
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8787)
     a = p.parse_args()
+    from tools.check_setup import check
+
+    preflight = check()
+    if not preflight["ready"]:
+        print("Setup incomplete: " + json.dumps(preflight), file=sys.stderr)
+        raise SystemExit(
+            "Run install.sh or INSTALL-WINDOWS.cmd with Python 3.11 before starting the worker."
+        )
     for file in DATA.glob("*/state.json"):
         state = json.loads(file.read_text())
         if state["status"] == "running":
             state.update(status="stopped", phase="Worker restarted; resume build")
             write(file, state)
-    print(f"Xputty Open Weight: http://127.0.0.1:{a.port}/#key={TOKEN}", flush=True)
+    public_url = os.environ.get("XOW_PUBLIC_URL", f"http://127.0.0.1:{a.port}").rstrip(
+        "/"
+    )
+    print(f"Xputty Open Weight: {public_url}/#key={TOKEN}", flush=True)
 
     def terminate(signum, frame):
         raise KeyboardInterrupt

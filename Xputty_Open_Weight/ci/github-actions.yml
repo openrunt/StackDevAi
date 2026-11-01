@@ -2,9 +2,9 @@ name: Xputty Open Weight
 on:
   push:
     branches: [xputty-open-weight]
-    paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml']
+    paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml', '.devcontainer/**']
   pull_request:
-    paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml']
+    paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml', '.devcontainer/**']
 permissions:
   contents: read
 concurrency:
@@ -69,8 +69,34 @@ jobs:
         with:
           name: xputty-open-weight-deployment
           path: Xputty_Open_Weight/dist/*
+  codespace-setup:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Xputty_Open_Weight
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: bash install.sh
+      - run: .venv/bin/python tools/check_setup.py
+      - name: Verify Codespaces startup
+        env:
+          CODESPACE_NAME: xow-ci
+          XOW_TOKEN: ci-ephemeral-key
+        run: |
+          .venv/bin/python tools/start_codespace.py
+          for i in $(seq 1 30); do
+            if curl -fsS -H 'Authorization: Bearer ci-ephemeral-key' http://127.0.0.1:8787/api/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat storage/codespace-worker.log
+          exit 1
   release:
-    needs: [acceptance, deployment]
+    needs: [acceptance, deployment, codespace-setup]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:

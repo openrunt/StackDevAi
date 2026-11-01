@@ -1,12 +1,11 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-py -3 -m venv .venv
-if errorlevel 1 exit /b 1
-.venv\Scripts\python.exe -m pip install --upgrade pip
-if errorlevel 1 exit /b 1
-.venv\Scripts\python.exe -m pip install "torch>=2.6,<3" --index-url https://download.pytorch.org/whl/cpu
-if errorlevel 1 exit /b 1
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+py -3.11 -c "import sys" >nul 2>&1
+if errorlevel 1 (
+  py -3 tools/bootstrap.py
+) else (
+  py -3.11 tools/bootstrap.py
+)
 if errorlevel 1 exit /b 1
 echo Xputty Open Weight is ready. Run START-WINDOWS.cmd.

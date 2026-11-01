@@ -2,7 +2,7 @@
 
 **Your material → your model.** A local-first browser canvas for collecting material, reviewing it, training a small language model, auditioning it and exporting portable weights.
 
-Version **0.3.0**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.3.0` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
+Version **0.3.1**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.3.1` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
 
 ## Open the canvas
 
@@ -69,3 +69,15 @@ See `VERIFICATION.json` for actual tested scope, not inferred platform support. 
 The phase journal is SHA-linked and timestamped. It is not represented as a completed binary phase ledger or PyQoS implementation. The release does not embed Shadow Core weights or execute its router. User-provided research concepts remain separate from demonstrated capabilities.
 
 Code follows the repository’s existing AGPL-3.0 license; see LICENSE. Third-party assets retain their respective licenses.
+
+
+## GitHub Codespaces
+
+The branch includes `.devcontainer/devcontainer.json`, pinned to Python 3.11.
+For an existing Codespace, stop the worker, run `git pull --ff-only`, then use
+**Ctrl+Shift+P → Codespaces: Rebuild Container**. Setup installs and verifies all
+dependencies and media assets before starting the worker. A mismatched old `.venv`
+is renamed to `.venv-backup-…`; project `storage/` is never removed.
+The startup output includes a forwarded HTTPS URL with the access key already
+in its fragment. Open that complete link to connect without manually copying the key.
+Python 3.13/3.14 environments are rejected before installing training dependencies.
