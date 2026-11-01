@@ -2,7 +2,7 @@
 
 **Your material → your model.** A local-first browser canvas for collecting material, reviewing it, training a small language model, auditioning it and exporting portable weights.
 
-Version **0.3.0**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
+Version **0.3.0**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.3.0` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
 
 ## Open the canvas
 

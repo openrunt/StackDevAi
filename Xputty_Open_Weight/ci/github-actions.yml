@@ -7,6 +7,9 @@ on:
     paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml']
 permissions:
   contents: read
+concurrency:
+  group: xputty-open-weight-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   acceptance:
     strategy:
@@ -66,3 +69,27 @@ jobs:
         with:
           name: xputty-open-weight-deployment
           path: Xputty_Open_Weight/dist/*
+  release:
+    needs: [acceptance, deployment]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xputty-open-weight-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish verified distribution packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(cat Xputty_Open_Weight/VERSION)
+          tag="xow-v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; preserving its artifacts."
+            exit 0
+          fi
+          gh release create "$tag" release-assets/*.zip --target "$GITHUB_SHA" --title "Xputty Open Weight $version" --notes "Browser ingestion, review, training, audition and GGUF/Safetensors export. Windows, Linux and macOS acceptance tests passed. OS bundles include media assets; Python dependencies install on first launch. CPU Docker build checked; CUDA execution is not hardware-verified. No podcast data or trained research weights included."
