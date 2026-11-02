@@ -15,6 +15,7 @@ FILES = {
     "launch.py",
     "requirements.txt",
     "requirements-dev.txt",
+    "requirements-public.txt",
     "ingestion-config.json",
     "assets-manifest.json",
     "Caddyfile",

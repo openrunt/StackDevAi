@@ -160,6 +160,9 @@ def test_authenticated_full_build_and_export(worker):
             break
         time.sleep(0.5)
     assert state["status"] == "complete", state
+    verification_events = [json.loads(line) for line in (data / project / 'events.jsonl').read_text().splitlines()
+                           if json.loads(line)['phase'] == 'Checking Transformers']
+    assert [event['details']['reused_prior_verification'] for event in verification_events] == [False, True]
     assert state["training"]["step"] == 2
     # Continue a completed model to a higher total instead of requiring a new project.
     request(f"/api/projects/{project}/build", {"steps": 3})

@@ -70,7 +70,9 @@ def evaluate(data, ckpt, split="test", samples=60, cores=2, context=None):
         final_rss_bytes=rss_bytes(),
         loss_aggregation="weighted_by_unmasked_target_tokens",
         sample_episode_ids=sorted(set(r[1]["episode_id"] for r in results)),
-        warning="Whole-work historical prose holdout. Prediction loss does not establish chat quality or historical accuracy."
+        warning="Conversation-disjoint public synthetic dialogue holdout. Token loss does not establish relevance, factual accuracy or natural speech."
+        if ckp["run_kind"] == "public_conversation_scratch_experiment"
+        else "Whole-work historical prose holdout. Prediction loss does not establish chat quality or historical accuracy."
         if ckp["run_kind"] == "historical_plain_text_experiment"
         else "Raw supplied-dialogue experiment: loss does not establish useful conversation or speech timing"
         if ckp["run_kind"] == "raw_dialogue_timing_experiment"

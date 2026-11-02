@@ -2,7 +2,46 @@
 
 **Your material → your model.** A local-first browser canvas for collecting material, reviewing it, training a small language model, auditioning it and exporting portable weights.
 
-## 48M research build (0.5.0)
+## Public conversation baseline
+
+Version 0.5.2 adds a reproducible public-data experiment and a **separate pretrained
+135M control**. The 48M model still trains from random weights. Both use pinned,
+attributed synthetic conversation material with independent adaptation partitions;
+neither invents audio timestamps. The comparison exports its actual model, provenance,
+assistant-only training report and fixed behavioral probes. It is never silently
+used as the scratch model. See [the full protocol](docs/PUBLIC-BASELINE.md) for commands,
+licenses, source revisions and the important upstream-pretraining overlap limitation.
+
+Public collection needs the optional `requirements-public.txt`. It is not installed
+or downloaded merely by opening the canvas. Existing projects and private data stay
+independent of this experiment.
+
+The standalone application lives in `Xputty_Open_Weight/` on the
+`xputty-open-weight-48m` branch of `openrunt/StackDevAi`. An earlier esmoai
+distribution is isolated from Living
+Universe's browser/OS sources and has no kernel integration. Xputty application
+code retains its own AGPL-3.0 license; upstream model/data licenses remain separate.
+
+The [podcast distillation and quantization lab](docs/DISTILLATION-AND-QUANTIZATION.md)
+adds versioned teacher responses, an auditable editorial review, assistant-only
+student adaptation, native GGUF probes, four original character profiles, and a
+resumable CPU quantized-base LoRA experiment. The small controls produced negative
+quality results despite improved loss; these are documented rather than presented
+as finished hosts. The 1.5B adapter remains a separate pretrained experiment.
+
+The current adapter trainer defaults to complete assistant replies from **every
+exchange**, retaining recent whole conversation pairs inside its context window.
+It masks prior messages and skips replies that cannot fit completely. The earlier
+first-reply-only controls remain reproducible with `--target-mode first`.
+
+The selected social-dialogue pilot completed 160 updates and exports actual native
+GGUF, a portable adapter and sharded Hugging Face weights. It gives shorter, more
+distinct contributions in the actor-role test, but still produces shallow replies
+and occasional poor reasoning. It is a test candidate, not an unattended podcast
+host. [Results, reproduction details and unfinished work](docs/EXPERIMENT-RESULTS.md)
+distinguish trained weights, prompt improvements and runtime verification.
+
+## 48M research build (0.5.2)
 
 This branch is `xputty-open-weight-48m`. New projects default to a **48,116,224-parameter**
 LLaMA-style decoder: 12 layers, width 512, 8 attention heads, feed-forward width 1,472,
@@ -114,7 +153,7 @@ not the entire Gutenberg archive. Add other reviewed UTF-8 `.txt` or `.md` works
 to a fresh plain-prose project before training. Do not use author birth dates or
 digitization dates as evidence that the text itself was written in the 1800s.
 
-Version **0.5.0**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.5.0` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
+Version **0.5.1**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.5.1` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
 
 ## Open the canvas
 

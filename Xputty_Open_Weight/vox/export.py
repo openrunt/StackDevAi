@@ -4,7 +4,7 @@ Interoperability: exact tensor/metadata checks are automated here. Runtime suppo
 requires a separate Ollama/llama.cpp smoke test on the user's machine.
 """
 
-import argparse, json, shutil, struct
+import argparse, json, shutil, struct, hashlib
 from pathlib import Path
 import numpy as np
 import sentencepiece as spm
@@ -298,6 +298,11 @@ def export(data, checkpoint, output, cores=2):
     )
     # Transformers LlamaForCausalLM expects model.* names for decoder weights.
     # The in-house TinyLlama omits that outer `model` submodule. Preserve lm_head.
+    source_state_digest = hashlib.sha256()
+    for name, value in sorted(model.state_dict().items()):
+        array = value.detach().cpu().contiguous().numpy()
+        source_state_digest.update(json.dumps([name, str(array.dtype), list(array.shape)]).encode())
+        source_state_digest.update(memoryview(array).cast('B'))
     hf_weights = {
         ("lm_head.weight" if k == "lm_head.weight" else "model." + k): v.detach()
         .cpu()
@@ -407,6 +412,22 @@ The scratch model has no trained chat template. The browser exposes both experim
 chat framing and direct prose continuation. Nothing is forwarded to a larger model.
 Runtime parity checks are reported separately in export_report.json.
 """
+    if meta["run_kind"] == "public_conversation_scratch_experiment":
+        card = f"""# Xputty Public Conversation — 48M scratch research baseline
+
+{model.n_parameters():,} parameters, {meta['step']} updates; randomly initialized.
+Maximum context: {c.context}. See reports for actual window exposure.
+Public synthetic conversation text from HuggingFaceTB/smol-smoltalk, pinned revision,
+checksums and Apache-2.0 attribution in public-sources.json and UPSTREAM-DATASET-CARD.md.
+Whole conversations are held out; the tokenizer is fitted only to training text.
+Visitor/Companion labels retain known source roles. No audio or speech timing is invented.
+This is next-token language training, not a completed instruction-tuned podcast host.
+Coherence and factual grounding must be evaluated separately from prediction loss.
+
+Run `python chat.py` to use these exported weights locally, or import Modelfile in Ollama.
+No pretrained model or remote fallback is used by this scratch checkpoint.
+The 135M pretrained control, when supplied, is a separate model and is never substituted.
+"""
     (out / "README.md").write_text(card, encoding="utf-8")
     shutil.copy2(root / "corpus_report.json", out / "corpus_report.json")
     report = dict(
@@ -416,6 +437,9 @@ Runtime parity checks are reported separately in export_report.json.
         weights_sha256=sha256(out / "model.safetensors"),
         gguf=gg,
         source_checkpoint_sha256=sha256(checkpoint),
+        source_model_state_sha256=source_state_digest.hexdigest(),
+        source_configuration=meta['config'], source_training_policy=meta.get('training_policy'),
+        source_representation=meta.get('representation'),
         verified_ollama=False,
         verified_llama_cpp=False,
         verified_hf_transformers=False,

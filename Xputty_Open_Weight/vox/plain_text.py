@@ -9,6 +9,7 @@ REPRESENTATION = "plain-text-works-v1"
 
 
 def build(sources, output, seed=739, provenance=None):
+    public_dialogue = (provenance or {}).get("kind") == "public-conversations"
     out = Path(output)
     if out.exists() and any(out.iterdir()):
         raise FileExistsError("Use a new corpus snapshot")
@@ -27,7 +28,7 @@ def build(sources, output, seed=739, provenance=None):
         works.append(
             dict(
                 episode_id=source.stem,
-                series_id="historical-prose",
+                series_id="public-conversations" if public_dialogue else "historical-prose",
                 text=text,
                 source_sha256=hashlib.sha256(blob).hexdigest(),
                 text_sha256=digest,
@@ -50,7 +51,7 @@ def build(sources, output, seed=739, provenance=None):
     )
     report = dict(
         schema="xow-plain-text/1",
-        origin="historical_plain_text",
+        origin="public_conversation_text" if public_dialogue else "historical_plain_text",
         representation=REPRESENTATION,
         timing_mode="none",
         release_eligible=False,
@@ -69,7 +70,8 @@ def build(sources, output, seed=739, provenance=None):
             for s, rows in splits.items()
         },
         provenance=provenance or {},
-        scope="Historical works, modern digital transcriptions. No claim of perfect edition purity or chat training.",
+        scope="Public synthetic conversations with known roles; no audio or measured speech timing."
+        if public_dialogue else "Historical works, modern digital transcriptions. No claim of perfect edition purity or chat training.",
     )
     (out / "corpus_report.json").write_text(
         json.dumps(report, indent=2), encoding="utf-8"

@@ -140,6 +140,8 @@ def run(root, steps=400):
                 from vox.plain_text import build as build_plain
 
                 provenance_path = root / "historical-sources.json"
+                if (root / "public-sources.json").exists():
+                    provenance_path = root / "public-sources.json"
                 provenance = (
                     json.loads(provenance_path.read_text(encoding="utf-8"))
                     if provenance_path.exists()
@@ -233,21 +235,31 @@ def run(root, steps=400):
                 root / "historical-sources.json",
                 root / "export/historical-sources.json",
             )
-        phase("Checking Transformers")
-        subprocess.run(
-            [
-                sys.executable,
-                "-X",
-                "utf8",
-                "tools/verify_hf_export.py",
-                "--run",
-                str(root),
-            ],
-            check=True,
-        )
+        if (root / "public-sources.json").exists():
+            shutil.copy2(root / "public-sources.json", root / "export/public-sources.json")
+            shutil.copy2(root / "UPSTREAM-DATASET-CARD.md", root / "export/UPSTREAM-DATASET-CARD.md")
+        from vox.verification_cache import input_signature, can_reuse
+        signature = input_signature(root)
+        reuse = can_reuse(root, signature)
+        phase("Checking Transformers", reused_prior_verification=reuse)
+        if not reuse:
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-X",
+                    "utf8",
+                    "tools/verify_hf_export.py",
+                    "--run",
+                    str(root),
+                ],
+                check=True,
+            )
         hf = json.loads((root / "hf-verification.json").read_text())
         if not hf["logits_match"] or not hf["all_tokenizer_probes_match"]:
             raise ValueError("Export parity check failed")
+        from vox.public_baseline import sha256
+        write(root / 'hf-verification-cache.json', {'inputs': signature, 'report_sha256': sha256(root / 'hf-verification.json'),
+                                                  'native_request_sha256': sha256(root / 'native-request.json')})
         checks = {
             "transformers": "passed",
             "llama_cpp": "not installed",

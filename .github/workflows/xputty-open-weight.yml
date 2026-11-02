@@ -43,6 +43,7 @@ jobs:
           VOX_OLLAMA_VERIFY: '0'
       - run: node --check web/app.js
       - run: node tests/ui_state_check.js
+      - run: node tests/chat_state_check.js
       - run: python tools/fetch_assets.py
       - run: python tools/build_packages.py --kind ${{ matrix.package }} --assets .
       - uses: actions/upload-artifact@v4

@@ -140,19 +140,23 @@ class Handler(BaseHTTPRequestHandler):
         route = urlsplit(self.path).path
         if not route.startswith("/api/"):
             if re.fullmatch(r"/chat/[a-f0-9]{32}", route):
-                from export_chat import PAGE
+                from export_chat import render_page
+                from types import SimpleNamespace
 
                 project = route.rsplit("/", 1)[-1]
-                page = PAGE.replace(
-                    "fetch('/api/chat'", f"fetch('/api/projects/{project}/chat'"
-                )
                 config_path = DATA / project / "export/config.json"
                 maximum = (
                     json.loads(config_path.read_text())["max_position_embeddings"]
                     if config_path.exists()
                     else 512
                 )
-                page = page.replace("__MAX_CONTEXT__", str(maximum))
+                report_path = DATA / project / "export/export_report.json"
+                metadata = json.loads(report_path.read_text(encoding="utf-8")) if report_path.exists() else {}
+                page = render_page(SimpleNamespace(
+                    context=maximum, instruction_tuned=metadata.get("instruction_tuned") is True,
+                    model_name=metadata.get("name", "Xputty scratch research model"),
+                    persona_profiles=metadata.get("persona_profiles", {}),
+                ), endpoint=f"/api/projects/{project}/chat")
                 blob = page.encode()
                 self.send_headers(200, "text/html; charset=utf-8", len(blob))
                 self.wfile.write(blob)
