@@ -407,7 +407,7 @@ The scratch model has no trained chat template. The browser exposes both experim
 chat framing and direct prose continuation. Nothing is forwarded to a larger model.
 Runtime parity checks are reported separately in export_report.json.
 """
-    (out / "README.md").write_text(card)
+    (out / "README.md").write_text(card, encoding="utf-8")
     shutil.copy2(root / "corpus_report.json", out / "corpus_report.json")
     report = dict(
         parameter_count=model.n_parameters(),

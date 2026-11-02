@@ -73,6 +73,15 @@ def test_plain_prose_export_and_chat_without_checkpoint(tmp_path, monkeypatch):
     monkeypatch.setenv("XOW_OLLAMA_VERIFY", "0")
     from worker import run
 
+    # Windows may default to cp1252. Portable model cards must always be UTF-8.
+    original_write = Path.write_text
+
+    def check_card_encoding(path, text, *args, **kwargs):
+        if path.name == "README.md" and path.parent.name == "export":
+            assert kwargs.get("encoding") == "utf-8"
+        return original_write(path, text, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", check_card_encoding)
     run(tmp_path, steps=2)
     state = json.loads((tmp_path / "state.json").read_text())
     assert state["status"] == "complete"
