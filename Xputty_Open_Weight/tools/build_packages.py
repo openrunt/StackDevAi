@@ -9,6 +9,7 @@ FILES = {
     "server.py",
     "worker.py",
     "audition.py",
+    "export_chat.py",
     "materials.py",
     "web_capture.py",
     "launch.py",

@@ -26,6 +26,12 @@ probes = [
     "Two  spaces\nA new line. Café — surprise!",
     "<|segment|><|at_ms|>0<|delta_ms|>0<|text|>That story caught me off guard.\n<|segment|>",
 ]
+if checkpoint.get("representation") == "plain-text-works-v1":
+    probes = [
+        "Dear friend, I write to you this evening",
+        "Two  spaces\nA new line. Café — surprise!",
+        "The traveller entered the room and said,",
+    ]
 model = LlamaForCausalLM.from_pretrained(export, local_files_only=True).eval()
 report = {
     "model_loaded": True,

@@ -2,7 +2,62 @@
 
 **Your material → your model.** A local-first browser canvas for collecting material, reviewing it, training a small language model, auditioning it and exporting portable weights.
 
-Version **0.3.1**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.3.1` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
+## The 1800s experiment
+
+Press **1800s experiment ↗** to create a separate plain-prose project and collect
+16 English works first published in 1800–1899. Downloads use a
+[listed Project Gutenberg mirror](https://www.gutenberg.org/MIRRORS.ALL),
+at one request every two seconds. No podcast project is modified.
+Review or remove books before pressing **Build my model**. The starter selects
+2,000 total updates. Raise the total to continue the same model later;
+the previous model ZIP is preserved under `exports-history/`.
+
+The pilot combines novels, memoir, essays, science and philosophy. It is
+literature-heavy and is not a representative sample of nineteenth-century society.
+`historical-sources.json` records work publication dates, known edition differences,
+source URLs and original/working SHA256 checksums. Modern ebook release dates are
+never mistaken for historical dates. Original downloads retain their license text;
+training copies exclude PG headers/footers and identified modern editorial notes.
+This targeted audit is not an exhaustive guarantee that every digitized edition is pure.
+
+Training starts from random weights, with no modern pretrained base. It uses raw
+prose plus document-end markers, never fabricated podcast timing or dialogue turns.
+Whole books are held out for validation and testing, and the tokenizer sees training
+books only. For a command-line experiment:
+
+```
+python tools/history1800.py --root storage/18011801180118011801180118011801 --steps 2000
+```
+
+Use a new root for a new collection. To resume an existing prepared experiment:
+`python worker.py storage/18011801180118011801180118011801 --steps 4000`.
+The number is a total target, not additional updates. Browser continuation archives
+the previous export; direct worker invocation does not automatically archive it.
+
+When complete, press **Open chat ↗**. Chat runs the **exported Safetensors**, without
+a training checkpoint or a fallback model. Each response identifies the weights hash,
+generation time and rolling context truncation. Chat framing is experimental:
+prose pretraining does not itself teach instruction following. Select **Continue a
+passage** to test the model's actual training task directly. Clear starts a fresh
+conversation; history lives in that tab and is never silently added to training.
+
+The downloaded model ZIP includes `model/chat.py`. With its documented dependencies
+installed, run `python chat.py` from the model directory and open the complete local
+link printed in the terminal. This works without Xputty's server or training files.
+GGUF and Modelfile are included for `ollama create xputty-1800s -f Modelfile`.
+Browser generation uses CPU; GGUF/Ollama acceptance is reported separately.
+
+For larger collections, Project Gutenberg documents
+[bulk/mirror access](https://www.gutenberg.org/help/mirroring.html).
+The Library of Congress offers [bulk newspaper OCR](https://www.loc.gov/collections/chronicling-america/datasets/)
+and [its current newspaper API](https://www.loc.gov/apis/additional-apis/chronicling-america-api/).
+Filter newspaper issue dates to 1800–1899 before adding text; OCR requires additional
+quality review. The built-in collector intentionally downloads only the dated starter,
+not the entire Gutenberg archive. Add other reviewed UTF-8 `.txt` or `.md` works
+to a fresh plain-prose project before training. Do not use author birth dates or
+digitization dates as evidence that the text itself was written in the 1800s.
+
+Version **0.4.0**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.4.0` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
 
 ## Open the canvas
 

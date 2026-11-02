@@ -27,6 +27,8 @@ ORIGINS = set(
 )
 LOCK = threading.RLock()
 PROCESSES = {}
+CHAT_SESSION = None
+CHAT_PROJECT = None
 MAX_UPLOAD = 256 * 1024**2
 
 
@@ -130,6 +132,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         route = urlsplit(self.path).path
         if not route.startswith("/api/"):
+            if re.fullmatch(r"/chat/[a-f0-9]{32}", route):
+                from export_chat import PAGE
+
+                project = route.rsplit("/", 1)[-1]
+                page = PAGE.replace(
+                    "fetch('/api/chat'", f"fetch('/api/projects/{project}/chat'"
+                )
+                blob = page.encode()
+                self.send_headers(200, "text/html; charset=utf-8", len(blob))
+                self.wfile.write(blob)
+                return
             name = {
                 "/": "index.html",
                 "/app.js": "app.js",
@@ -218,11 +231,13 @@ class Handler(BaseHTTPRequestHandler):
             state = json.loads((root / "state.json").read_text())
             process = PROCESSES.get(root.name)
             if state["status"] == "running" and process and process.poll() is not None:
-                state.update(
-                    status="failed",
-                    error="Worker exited unexpectedly. Open activity, then resume the build.",
-                )
-                write(root / "state.json", state)
+                state = json.loads((root / "state.json").read_text())
+                if state["status"] == "running":
+                    state.update(
+                        status="failed",
+                        error="Worker exited unexpectedly. Open activity, then resume the build.",
+                    )
+                    write(root / "state.json", state)
             log = root / "output.log"
             state["log"] = ""
             if log.exists():
@@ -242,10 +257,50 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({"error": str(e)}, 400)
 
     def do_POST(self):
+        global CHAT_SESSION, CHAT_PROJECT
         if not self.authorized():
             return
         try:
             parts = urlsplit(self.path).path.split("/")
+            if parts == ["", "api", "history1800"]:
+                self.body()
+                with LOCK:
+                    if any(p.poll() is None for p in PROCESSES.values()):
+                        raise ValueError(
+                            "Wait for the current job before collecting books"
+                        )
+                    identifier = uuid.uuid4().hex
+                    root = DATA / identifier
+                    (root / "uploads").mkdir(parents=True)
+                    state = dict(
+                        id=identifier,
+                        name="1800s · historical experiment",
+                        created=time.time(),
+                        status="running",
+                        mode="plain",
+                        phase="Collecting historical works",
+                        steps=2000,
+                        files=[],
+                    )
+                    write(root / "state.json", state)
+                    with (root / "output.log").open("a", encoding="utf-8") as log:
+                        PROCESSES[identifier] = subprocess.Popen(
+                            [
+                                sys.executable,
+                                "-u",
+                                "-X",
+                                "utf8",
+                                "tools/history1800.py",
+                                "--root",
+                                str(root),
+                                "--collect-only",
+                            ],
+                            cwd=BASE,
+                            stdout=log,
+                            stderr=log,
+                        )
+                    self.reply(state)
+                return
             if parts == ["", "api", "projects"]:
                 body = self.body()
                 identifier = uuid.uuid4().hex
@@ -392,10 +447,34 @@ class Handler(BaseHTTPRequestHandler):
                     steps = int(body.get("steps", 400))
                     if not 1 <= steps <= 100000:
                         raise ValueError("Steps must be 1–100000")
+                    # Ready is committed before Python finishes releasing Torch.
+                    # Let that owned process exit before accepting continuation.
+                    previous = PROCESSES.get(root.name)
+                    if (
+                        state["status"] == "complete"
+                        and previous
+                        and previous.poll() is None
+                    ):
+                        previous.wait(timeout=10)
                     if any(p.poll() is None for p in PROCESSES.values()):
                         raise ValueError("Worker is busy. Stop the active build first.")
                     if state["status"] == "complete":
-                        raise ValueError("This build is complete; create a new project")
+                        report = json.loads(
+                            (root / "dense/training_report.json").read_text()
+                        )
+                        if steps <= report["step"]:
+                            raise ValueError(
+                                f"Choose a total update target above {report['step']} to continue training"
+                            )
+                        # Keep the previous deployable artifact when continuing a finished experiment.
+                        import shutil
+
+                        history = root / "exports-history"
+                        history.mkdir(exist_ok=True)
+                        shutil.copy2(
+                            root / "model.zip", history / f"step-{report['step']}.zip"
+                        )
+                    CHAT_SESSION = CHAT_PROJECT = None
                     if len(state["files"]) < 3:
                         raise ValueError("Add at least three different episode files")
                     state.update(status="running", phase="Starting", steps=steps)
@@ -418,6 +497,21 @@ class Handler(BaseHTTPRequestHandler):
                             stderr=log,
                         )
                     self.reply(state)
+                    return
+                if action == "chat":
+                    if state["status"] != "complete":
+                        raise ValueError(
+                            "Finish the build before opening its exported weights"
+                        )
+                    body = self.body()
+                    from export_chat import ExportSession
+
+                    if CHAT_PROJECT != root.name or CHAT_SESSION is None:
+                        CHAT_SESSION = None
+                        CHAT_PROJECT = None
+                        CHAT_SESSION = ExportSession(root / "export")
+                        CHAT_PROJECT = root.name
+                    self.reply(CHAT_SESSION.respond(body))
                     return
                 if action == "audition":
                     if state["status"] != "complete":

@@ -23,7 +23,12 @@ def train(data_dir, vocab_size=4096):
         from .raw_baseline import RAW_TOKENS
 
         symbols += RAW_TOKENS
-    raw_mode = corpus_report.get("representation") == "unlabelled-dialogue-timing-v1"
+    raw_mode = corpus_report.get("representation") in (
+        "unlabelled-dialogue-timing-v1",
+        "plain-text-works-v1",
+    )
+    if corpus_report.get("representation") == "plain-text-works-v1":
+        symbols = ["<|eod|>"]
     normalizer_options = (
         dict(
             normalization_rule_name="identity",

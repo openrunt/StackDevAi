@@ -28,7 +28,14 @@ def prepare(data_dir):
                 raw_mode = (
                     report.get("representation") == "unlabelled-dialogue-timing-v1"
                 )
-                if raw_mode:
+                plain_mode = report.get("representation") == "plain-text-works-v1"
+                if plain_mode:
+                    toks = sp.encode(e["text"], out_type=int) + [
+                        sp.piece_to_id("<|eod|>")
+                    ]
+                    positions = [0]
+                    expected = 1
+                elif raw_mode:
                     from .raw_baseline import serialize_raw
 
                     serialized = serialize_raw(e)
@@ -38,10 +45,11 @@ def prepare(data_dir):
                     serialized = serialize_episode(e, report.get("timing_mode", "none"))
                     marker = "<|turn|>"
                     expected = len(e["turns"])
-                toks = sp.encode(serialized, out_type=int)
-                positions = [
-                    i for i, t in enumerate(toks) if t == sp.piece_to_id(marker)
-                ]
+                if not plain_mode:
+                    toks = sp.encode(serialized, out_type=int)
+                    positions = [
+                        i for i, t in enumerate(toks) if t == sp.piece_to_id(marker)
+                    ]
                 if len(positions) != expected:
                     raise ValueError(
                         f"failed to preserve source boundaries for {e['episode_id']}"
@@ -50,7 +58,9 @@ def prepare(data_dir):
                 roles = []
                 active = 2
                 for tid in toks:
-                    if raw_mode and tid in (
+                    if plain_mode:
+                        roles.append(0 if tid == sp.piece_to_id("<|eod|>") else 2)
+                    elif raw_mode and tid in (
                         sp.piece_to_id("<|at_ms|>"),
                         sp.piece_to_id("<|delta_ms|>"),
                     ):
@@ -113,9 +123,9 @@ class CorpusSamples:
             np.memmap(role_path, dtype="u1", mode="r") if role_path.exists() else None
         )
         report = json.loads((self.root / "prepared_report.json").read_text())
-        if (
-            stage == "chat"
-            and report.get("representation") == "unlabelled-dialogue-timing-v1"
+        if stage == "chat" and report.get("representation") in (
+            "unlabelled-dialogue-timing-v1",
+            "plain-text-works-v1",
         ):
             raise ValueError(
                 "unlabelled segment boundaries cannot be used as verified speaker turns for chat specialization"

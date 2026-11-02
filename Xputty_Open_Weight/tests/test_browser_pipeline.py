@@ -112,6 +112,22 @@ def test_authenticated_full_build_and_export(worker):
         {"text": "I think music brings people together."},
     )
     assert result["raw"] and "speech_text" in result
+    chat_page = request(f"/chat/{project}")
+    assert b"/api/projects/" + project.encode() + b"/chat" in chat_page
+    chat = request(
+        f"/api/projects/{project}/chat",
+        {
+            "messages": [{"role": "user", "content": "Good evening."}],
+            "max_new_tokens": 8,
+        },
+    )
+    assert chat["backend"] == "exported-safetensors-local-cpu"
+    assert (
+        chat["weights_sha256"]
+        == hashlib.sha256(
+            (data / project / "export/model.safetensors").read_bytes()
+        ).hexdigest()
+    )
     blob = request(f"/api/projects/{project}/download")
     archive = data / "download.zip"
     archive.write_bytes(blob)
@@ -143,6 +159,17 @@ def test_authenticated_full_build_and_export(worker):
         time.sleep(0.5)
     assert state["status"] == "complete", state
     assert state["training"]["step"] == 2
+    # Continue a completed model to a higher total instead of requiring a new project.
+    request(f"/api/projects/{project}/build", {"steps": 3})
+    deadline = time.time() + 100
+    while time.time() < deadline:
+        state = request(f"/api/projects/{project}")
+        if state["status"] != "running":
+            break
+        time.sleep(0.5)
+    assert state["status"] == "complete", state
+    assert state["training"]["step"] == 3
+    assert (data / project / "exports-history/step-2.zip").is_file()
 
 
 def test_upload_validation_and_failed_build(worker):

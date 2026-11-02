@@ -1,28 +1,43 @@
 {
   "name": "Xputty Open Weight",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "local_acceptance": {
     "platform": "Windows-10-10.0.19045-SP0",
-    "tests_passed": 16,
+    "tests_passed": 20,
     "full_build": "passed",
     "transformers_parity": "passed",
     "capture_edit_remove_restore_replace": "passed",
     "packaging_privacy_and_unix_permissions": "passed",
-    "macos_missing_affinity_api_simulation": "passed"
+    "macos_missing_affinity_api_simulation": "passed",
+    "historical_prose_export_and_checkpoint_free_chat": "passed",
+    "historical_collection": "16 live downloads; immutable originals and cleaned working hashes verified",
+    "test_scope": "19-test full suite plus Windows atomic-write retry and updated authenticated chat/continuation acceptance after fixes",
+    "completed_historical_pilot": {
+      "works": 16,
+      "words": 1586007,
+      "updates": 2000,
+      "validation_before": 8.34614,
+      "validation_after": 4.64867,
+      "test_loss": 4.50581,
+      "hf_exact_parity": true,
+      "ollama_generation": true,
+      "model_quality": "fragmented; not coherent assistant acceptance"
+    }
   },
   "platform_acceptance": {
-    "windows": "GitHub Actions x64 acceptance passed",
-    "linux": "GitHub Actions x64 acceptance passed",
-    "macos": "GitHub Actions Apple Silicon acceptance passed",
+    "windows": "0.3.1 verified; 0.4.0 pending CI",
+    "linux": "0.3.1 verified; 0.4.0 pending CI",
+    "macos": "0.3.1 verified; 0.4.0 pending CI",
     "cuda": "not executed; no CUDA hardware on local test host",
-    "docker": "GitHub Actions CPU image build and model-load smoke test passed"
+    "docker": "0.3.1 verified; 0.4.0 pending CI"
   },
   "distribution": "OS source/launcher bundles include Vosk and Tika; Python/runtime dependencies install at first launch, not native executables",
   "limitations": [
     "Research model output remains fragmented",
     "Single-owner worker; not multi-tenant",
     "Chrome visual automation unavailable",
-    "Binary phase ledger and PyQoS integration not claimed"
+    "Binary phase ledger and PyQoS integration not claimed",
+    "Historical pilot is literature-heavy; original work dates curated, edition purity not exhaustively audited; prose pretraining is not instruction tuning"
   ],
   "publication_exclusions": [
     "access keys",
@@ -32,9 +47,9 @@
     "trained research weights"
   ],
   "shell_launcher_syntax": "bash -n passed",
-  "ci_run": "https://github.com/openrunt/StackDevAi/actions/runs/41349283688",
-  "ci_verified_commit": "04714acd3d0862788521f24b1700952851954291",
-  "release_url": "https://github.com/openrunt/StackDevAi/releases/tag/xow-v0.3.0",
+  "ci_run": null,
+  "ci_verified_commit": null,
+  "release_url": null,
   "unverified_hardware": [
     "CUDA GPU",
     "Intel Mac",
@@ -45,6 +60,8 @@
     "dependency_preflight": true,
     "old_environments_backed_up": true,
     "codespaces_python": "3.11",
-    "fresh_install_ci": "pending"
-  }
+    "fresh_install_ci": "passed at 0.3.1"
+  },
+  "previous_ci_run": "https://github.com/openrunt/StackDevAi/actions/runs/41352689065",
+  "previous_ci_verified_commit": "8ecda12ec39ff9033c921dab2c290f89ff121031"
 }

@@ -50,7 +50,9 @@ def train(
     r = Path(run_dir)
     r.mkdir(parents=True, exist_ok=True)
     report = json.loads((d / "prepared_report.json").read_text())
-    if report["origin"] == "user_supplied_raw_dialogue":
+    if report.get("representation") == "plain-text-works-v1":
+        run_kind = "historical_plain_text_experiment"
+    elif report["origin"] == "user_supplied_raw_dialogue":
         run_kind = "raw_dialogue_timing_experiment"
     elif not report["release_eligible"]:
         run_kind = "synthetic_smoke"

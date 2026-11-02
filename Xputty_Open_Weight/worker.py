@@ -5,9 +5,32 @@ from pathlib import Path
 
 
 def write(path, value):
-    temporary = path.with_suffix(".tmp")
-    temporary.write_text(json.dumps(value, indent=2), encoding="utf-8")
-    os.replace(temporary, path)
+    import tempfile
+
+    path = Path(path)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=path.parent,
+        prefix=path.name + ".",
+        suffix=".tmp",
+        delete=False,
+    ) as stream:
+        temporary = Path(stream.name)
+        stream.write(json.dumps(value, indent=2))
+    try:
+        # Windows readers/virus scanners can briefly hold a destination without
+        # delete sharing. Retain atomic replacement and retry that narrow case.
+        for attempt in range(9):
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError:
+                if attempt == 8:
+                    raise
+                time.sleep(min(0.01 * 2**attempt, 0.25))
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def run(root, steps=400):
@@ -50,9 +73,17 @@ def run(root, steps=400):
         warnings = []
         from materials import source_path
 
+        plain_mode = state.get("mode") == "plain"
         for i, item in enumerate(state["files"]):
             source = source_path(root, item)
             phase("Reading material", file=source.name)
+            if plain_mode:
+                if source.suffix.lower() not in (".txt", ".md"):
+                    raise ValueError(
+                        "Plain prose mode requires UTF-8 TXT or Markdown working copies"
+                    )
+                sources.append(source)
+                continue
             out = root / "intake" / str(i)
             out.parent.mkdir(exist_ok=True)
             if not (out / "candidate_turns.jsonl").exists():
@@ -91,7 +122,18 @@ def run(root, steps=400):
                 import shutil
 
                 shutil.rmtree(root / "data")  # owned derived directory only
-            report = build(sources, root / "data")
+            if plain_mode:
+                from vox.plain_text import build as build_plain
+
+                provenance_path = root / "historical-sources.json"
+                provenance = (
+                    json.loads(provenance_path.read_text(encoding="utf-8"))
+                    if provenance_path.exists()
+                    else {}
+                )
+                report = build_plain(sources, root / "data", provenance=provenance)
+            else:
+                report = build(sources, root / "data")
             tokenize(root / "data", 4096)
             prepare(root / "data")
         report = json.loads((root / "data/corpus_report.json").read_text())
@@ -123,6 +165,16 @@ def run(root, steps=400):
         write(root / "metrics.json", metrics)
         phase("Exporting")
         export(root / "data", checkpoint, root / "export", cores=2)
+        # Exported weights can be opened independently, without the training checkpoint.
+        import shutil
+
+        shutil.copy2("export_chat.py", root / "export/chat.py")
+        shutil.copy2("LICENSE", root / "export/LICENSE")
+        if (root / "historical-sources.json").exists():
+            shutil.copy2(
+                root / "historical-sources.json",
+                root / "export/historical-sources.json",
+            )
         phase("Checking Transformers")
         subprocess.run(
             [

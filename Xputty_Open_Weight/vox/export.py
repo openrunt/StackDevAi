@@ -307,7 +307,8 @@ def export(data, checkpoint, output, cores=2):
     save_file(hf_weights, str(out / "model.safetensors"), metadata={"format": "pt"})
     sp = spm.SentencePieceProcessor(model_file=str(root / "vox.model"))
     raw_mode = meta.get("representation") == "unlabelled-dialogue-timing-v1"
-    if raw_mode:
+    plain_mode = meta.get("representation") == "plain-text-works-v1"
+    if raw_mode or plain_mode:
         # User-defined SentencePiece symbols are ordinary atomic tokens, not
         # pre-normalization special-token splits. Preserve the full normalizer.
         from transformers import LlamaTokenizer
@@ -353,7 +354,9 @@ def export(data, checkpoint, output, cores=2):
         model,
         sp,
         out / "vox-fibra-f16.gguf",
-        "Vox Dialogue Timing Raw Baseline"
+        "Xputty Historical Prose"
+        if plain_mode
+        else "Vox Dialogue Timing Raw Baseline"
         if raw_mode
         else "Vox FIBRA R02 Technical Smoke"
         if not meta["release_eligible"]
@@ -363,7 +366,7 @@ def export(data, checkpoint, output, cores=2):
         'FROM ./vox-fibra-f16.gguf\nTEMPLATE """{{ .Prompt }}"""\nPARAMETER num_ctx '
         + str(c.context)
         + '\nPARAMETER temperature 0.8\nPARAMETER stop "'
-        + ("<|eod|>" if raw_mode else "<|turn|>")
+        + ("<|eod|>" if raw_mode or plain_mode else "<|turn|>")
         + '"\n'
     )
     card = """---\nlanguage:\n- en\ntags:\n- from-scratch\n- tiny-language-model\n- research\n---\n# Vox FIBRA R02 — UNVERIFIED RESEARCH CHECKPOINT\n\nThis artifact is an original randomly initialized LLaMA-style decoder trained with Vox FIBRA tools.\n\n**Do not advertise it as podcast-trained or production-ready unless the corpus rights, training, held-out natural conversation quality, GGUF runtime compatibility, and hardware benchmarks have all been verified.**\n\nTraining origin: **{origin}**. Permission basis and source records are in `corpus_report.json` (only aggregate lineage is exported; raw transcripts are not redistributed).\n\nModel parameters: **{params:,}**. Context: **{ctx} tokens**. Training steps: **{steps}** ({stage}).\n\nThis is a technical smoke run on entirely synthetic phrases, NOT a completed modern conversational model.\n\nNative Ollama/llama.cpp inference was not validated by this generator. Run the documented compatibility checks before publishing.\n\nSafety, bias, age suitability, paraphrase memorization, naturalness, and full reproducibility on third-party hardware have not been established.\n""".format(
@@ -384,6 +387,26 @@ def export(data, checkpoint, output, cores=2):
             "This local research checkpoint was trained on user-supplied, unlabelled timestamped dialogue. It is not a synthetic fixture. Source segments are not verified speaker turns. Source-start deltas are not measured speech pauses. Public distribution is not authorized by this export.",
         )
         card += "\nSerialization: `<|segment|><|at_ms|>1000<|delta_ms|>0<|text|>Dialogue...`. Timing markers are machine-readable source positions, not text to speak. Natural dialogue and timing quality have not been established.\n"
+    if plain_mode:
+        card = f"""# Xputty Historical Prose — experimental weights
+
+Randomly initialized LLaMA-style model; {model.n_parameters():,} parameters,
+{meta["step"]} updates, {c.context}-token training windows. No pretrained weights.
+Trained on prose with whole-work train/validation/test splits and a train-only tokenizer.
+See corpus_report.json and historical-sources.json for dates, editions and checksums.
+Modern digital transcription dates are not original publication dates.
+This is next-token pretraining, not instruction tuning: conversational responsiveness,
+accuracy, period purity and fluency are not established. Historical texts contain period biases.
+
+## Chat with these exported weights
+
+Install Python 3.11, then `python -m pip install 'transformers>=4.57,<4.58' torch sentencepiece safetensors`.
+Run `python chat.py` inside this model folder. It prints a private localhost browser link.
+Alternatively: `ollama create xputty-1800s -f Modelfile` then `ollama run xputty-1800s`.
+The scratch model has no trained chat template. The browser exposes both experimental
+chat framing and direct prose continuation. Nothing is forwarded to a larger model.
+Runtime parity checks are reported separately in export_report.json.
+"""
     (out / "README.md").write_text(card)
     shutil.copy2(root / "corpus_report.json", out / "corpus_report.json")
     report = dict(
