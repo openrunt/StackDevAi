@@ -27,6 +27,8 @@ def worker(tmp_path):
 
     def request(path, body=None, headers=None, auth=True):
         h = {"Authorization": "Bearer test-worker-key"} if auth else {}
+        if path == "/api/projects" and isinstance(body, dict):
+            body = {"preset": "tiny-1m-v1", **body}
         if body is not None and not isinstance(body, bytes):
             body = json.dumps(body).encode()
             h["Content-Type"] = "application/json"
@@ -170,6 +172,34 @@ def test_authenticated_full_build_and_export(worker):
     assert state["status"] == "complete", state
     assert state["training"]["step"] == 3
     assert (data / project / "exports-history/step-2.zip").is_file()
+
+
+def test_model_presets_are_explicit_and_locked(worker):
+    request, data = worker
+    presets = request("/api/presets")
+    assert presets["research-48m-v1"]["parameters"] == 48116224
+    project = request(
+        "/api/projects",
+        {"preset": "research-48m-v1", "training_settings": {"ramp_updates": 0}},
+    )["id"]
+    state = request(f"/api/projects/{project}")
+    assert state["build_config"]["max_context"] == 2048
+    assert state["build_config"]["ramp_updates"] == 0
+    state = request(
+        f"/api/projects/{project}/options",
+        {"preset": "tiny-1m-v1", "training_settings": {}},
+    )
+    assert state["preset"] == "tiny-1m-v1"
+    with pytest.raises(urllib.error.HTTPError):
+        request(
+            f"/api/projects/{project}/options",
+            {"training_settings": {"windows": [4096], "window_weights": [1]}},
+        )
+    path = data / project / "state.json"
+    state["status"] = "stopped"
+    path.write_text(json.dumps(state))
+    with pytest.raises(urllib.error.HTTPError):
+        request(f"/api/projects/{project}/options", {"preset": "research-48m-v1"})
 
 
 def test_upload_validation_and_failed_build(worker):

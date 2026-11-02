@@ -2,6 +2,63 @@
 
 **Your material → your model.** A local-first browser canvas for collecting material, reviewing it, training a small language model, auditioning it and exporting portable weights.
 
+## 48M research build (0.5.0)
+
+This branch is `xputty-open-weight-48m`. New projects default to a **48,116,224-parameter**
+LLaMA-style decoder: 12 layers, width 512, 8 attention heads, feed-forward width 1,472,
+8,192 vocabulary entries and 2,048 maximum context tokens. It trains from random
+initialization. The 1.6M quick-test preset remains available; pre-existing projects
+without a preset continue using their original architecture and tokenizer.
+Create a **new project** for 48M. Changing a checkpoint's label does not expand its weights.
+
+1. Select **48M · mixed-context research** and the material format.
+2. Add and review your sources. Timestamped transcripts use podcast mode; books and
+   untimed prose can use plain mode. Originals and whole-source holdouts are preserved.
+3. Optionally open **Context mix & learning schedule**. The defaults mix
+   256/512/1,024/2,048-token windows with weights 4/3/2/1. A 1,000-update ramp unlocks
+   lengths in four stages; short windows remain in the mix. Ramp 0 includes every
+   length immediately, covering each once before weighted sampling.
+4. Set a total update target and build. Small targets verify operation; they do not
+   produce a coherent conversational host. The activity view reports live context,
+   tokens/second and the last saved update. Settings lock at first build.
+5. Continue to a higher total target to resume the optimizer, curriculum and learning
+   schedule. This does not restart warmup. The previous completed model ZIP is retained.
+6. **Open chat** uses the actual exported weights. Context and response-token budgets
+   are independently selectable. Download includes the same portable chat script,
+   Safetensors, GGUF, training policy, actual window exposure and evaluation reports.
+
+Activation checkpointing is enabled for 48M. Microbatches accumulate to at least
+512 input-token positions per update; a long window can exceed that minimum.
+Warmup is 100 updates, followed by cosine decay through a fixed 10,000-update horizon.
+The horizon is separate from the requested stop target so extending a run does not
+silently change its schedule. Architecture and policy changes require a new project.
+Actual source tokens and padding are distinguished in the training report.
+
+The local Windows CPU acceptance run used the full 48M model, all four window lengths,
+and exact checkpoint resume. Reported numerical export checks cover each selected
+context length. This verifies mechanics, not fluency, factual grounding or long-context
+retrieval quality. CPU training is substantially slower than the 1.6M baseline.
+GPU/MPS acceleration and GPU memory usage have not been hardware-verified here.
+
+The maximum context is a capacity limit. **See `context_updates` and `metrics.by_context`
+for what was actually trained and evaluated.** Running four short updates with a
+progressive ramp does not train 2,048-token dependencies. Stops request a safe update
+boundary and checkpoint; an unresponsive job is terminated after the grace period,
+preserving its last completed save.
+
+The local launcher uses **http://127.0.0.1:8791** so the original build can stay running.
+Codespaces continues to forward port 8787. To test this branch, use the repository's
+**Code → Codespaces** menu while `xputty-open-weight-48m` is selected. A fresh Codespace
+installs Python 3.11 dependencies and starts the authenticated canvas automatically.
+Existing Codespaces must pull this branch and restart their worker; a new Codespace
+keeps old experiments independently accessible. No paid worker is provisioned by this app.
+
+CLI users can train a prepared 8K-vocabulary corpus with:
+`python -m vox.train --data DATA --run RUN --preset research-48m-v1 --steps 1000`.
+The browser worker additionally handles ingestion, evaluation, export and packaging.
+The 48M preset requires enough varied text to train its 8,192-token vocabulary; it
+fails clearly if a tiny fixture cannot supply that vocabulary.
+
 ## The 1800s experiment
 
 Press **1800s experiment ↗** to create a separate plain-prose project and collect
@@ -57,7 +114,7 @@ not the entire Gutenberg archive. Add other reviewed UTF-8 `.txt` or `.md` works
 to a fresh plain-prose project before training. Do not use author birth dates or
 digitization dates as evidence that the text itself was written in the 1800s.
 
-Version **0.4.0**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.4.0` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
+Version **0.5.0**. Windows CPU acceptance is tested locally; GitHub Actions runs the same suite on Windows, Linux and macOS and builds per-OS packages. Successful branch builds attach packages to the namespaced `xow-v0.5.0` GitHub release. An OS package includes source, launchers, the English Vosk model and Apache Tika. Python packages are installed on first launch: these are not standalone native executables or fully offline installers.
 
 ## Open the canvas
 
@@ -69,14 +126,18 @@ Install **64-bit Python 3.11** and extract a distribution ZIP.
 | macOS Apple Silicon | Open `START-MAC.command` (or `sh start.sh` in Terminal) |
 | Linux x64 | Run `sh start.sh` |
 
-First start creates an isolated `.venv` and installs requirements. Chrome opens at **http://127.0.0.1:8788** with the worker access key. Another installed browser is used if Chrome is absent. Keep the worker running while building; closing a browser tab does not stop a build. `python launch.py --no-browser` starts without opening a window. The old VOX studio on port 8787 is unaffected.
+First start creates an isolated `.venv` and installs requirements. Chrome opens at **http://127.0.0.1:8791** with the worker access key. Another installed browser is used if Chrome is absent. Keep the worker running while building; closing a browser tab does not stop a build. `python launch.py --no-browser` starts without opening a window. The old VOX studio on port 8787 is unaffected.
 
 1. **Add material.** Drop files or paste a webpage URL and press Capture link. At least three separate episodes with usable text are needed to preserve whole-episode holdouts.
 2. **Review.** Edit text, replace binary files, remove unwanted material or undo removal. Original bytes remain intact; training uses the working copies.
 3. **Build.** Preparation, training, evaluation and export run as a background job. Activity shows errors and the most recent checkpoint. Stop/resume preserves completed saves.
 4. **Try & export.** Enter a dialogue fragment. Download GGUF, Safetensors, tokenizer, Modelfile and evaluation reports. The model ZIP excludes source transcripts.
 
-The default is a **1.6M-parameter research model trained from scratch**, with 512-token training windows and a train-only 4,096-token vocabulary. It is not a pretrained assistant, speech model or production podcast host. Source timestamps are not measured speech pauses. Local runtime checks are separate from conversational quality acceptance.
+New projects use the **48M research preset** above. The quick-test preset uses about
+1.6M parameters, 512-token windows and a train-only 4,096-token vocabulary. Neither
+preset is a pretrained assistant, speech model or production podcast host. Source
+timestamps are not measured speech pauses. Runtime checks and conversational quality
+acceptance are separate.
 
 ## Input and compute
 

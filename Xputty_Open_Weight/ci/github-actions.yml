@@ -1,7 +1,7 @@
-name: Xputty Open Weight
+name: Xputty Open Weight · 48M
 on:
   push:
-    branches: [xputty-open-weight]
+    branches: [xputty-open-weight-48m]
     paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml', '.devcontainer/**']
   pull_request:
     paths: ['Xputty_Open_Weight/**', '.github/workflows/xputty-open-weight.yml', '.devcontainer/**']
@@ -42,10 +42,12 @@ jobs:
           VOX_DEVICE: cpu
           VOX_OLLAMA_VERIFY: '0'
       - run: node --check web/app.js
+      - run: node tests/ui_state_check.js
       - run: python tools/fetch_assets.py
       - run: python tools/build_packages.py --kind ${{ matrix.package }} --assets .
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: xputty-open-weight-${{ matrix.package }}
           path: Xputty_Open_Weight/dist/*
   deployment:
@@ -67,6 +69,7 @@ jobs:
       - run: docker run --rm --entrypoint python xow-acceptance -c "from vox.model import TinyLlama,ModelConfig; print(TinyLlama(ModelConfig()).n_parameters())"
       - uses: actions/upload-artifact@v4
         with:
+          retention-days: 1
           name: xputty-open-weight-deployment
           path: Xputty_Open_Weight/dist/*
   codespace-setup:

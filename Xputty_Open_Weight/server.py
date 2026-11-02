@@ -46,6 +46,12 @@ def stop(root):
 
     process = PROCESSES.get(root.name)
     if process and process.poll() is None:
+        (root / "stop-request").write_text("stop at next safe update boundary")
+        try:
+            process.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            pass
+    if process and process.poll() is None:
         try:
             parent = psutil.Process(process.pid)
             children = parent.children(recursive=True)
@@ -63,6 +69,7 @@ def stop(root):
         status="stopped", phase="Stopped; checkpoint saved through last completed save"
     )
     write(root / "state.json", state)
+    (root / "stop-request").unlink(missing_ok=True)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -139,6 +146,13 @@ class Handler(BaseHTTPRequestHandler):
                 page = PAGE.replace(
                     "fetch('/api/chat'", f"fetch('/api/projects/{project}/chat'"
                 )
+                config_path = DATA / project / "export/config.json"
+                maximum = (
+                    json.loads(config_path.read_text())["max_position_embeddings"]
+                    if config_path.exists()
+                    else 512
+                )
+                page = page.replace("__MAX_CONTEXT__", str(maximum))
                 blob = page.encode()
                 self.send_headers(200, "text/html; charset=utf-8", len(blob))
                 self.wfile.write(blob)
@@ -190,6 +204,16 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 return
             parts = route.split("/")
+            if route == "/api/presets":
+                from vox.presets import PRESETS, parameter_count
+
+                self.reply(
+                    {
+                        name: {**config, "parameters": parameter_count(config)}
+                        for name, config in PRESETS.items()
+                    }
+                )
+                return
             root = job(parts[3])
             action = parts[4] if len(parts) > 4 else ""
             if action in ("material", "capture-package"):
@@ -252,6 +276,19 @@ class Handler(BaseHTTPRequestHandler):
                     state["training"] = json.loads(report.read_text())
                 except json.JSONDecodeError:
                     pass
+            progress = root / "dense/progress.json"
+            if progress.exists():
+                try:
+                    state["progress"] = json.loads(progress.read_text())
+                except json.JSONDecodeError:
+                    pass
+            from vox.presets import resolve, parameter_count
+
+            resolved = resolve(state)
+            state["build_config"] = {
+                **resolved,
+                "parameters": parameter_count(resolved),
+            }
             self.reply(state)
         except (ValueError, IndexError, FileNotFoundError) as e:
             self.reply({"error": str(e)}, 400)
@@ -278,6 +315,7 @@ class Handler(BaseHTTPRequestHandler):
                         created=time.time(),
                         status="running",
                         mode="plain",
+                        preset="research-48m-v1",
                         phase="Collecting historical works",
                         steps=2000,
                         files=[],
@@ -313,7 +351,16 @@ class Handler(BaseHTTPRequestHandler):
                     "status": "draft",
                     "phase": "Add material",
                     "files": [],
+                    "preset": body.get("preset", "research-48m-v1"),
+                    "training_settings": body.get("training_settings", {}),
+                    "mode": body.get("mode", "dialogue"),
+                    "steps": 1000,
                 }
+                from vox.presets import resolve
+
+                resolve(state)
+                if state["mode"] not in ("dialogue", "plain"):
+                    raise ValueError("Choose dialogue or plain text")
                 write(root / "state.json", state)
                 self.reply(state)
                 return
@@ -321,6 +368,28 @@ class Handler(BaseHTTPRequestHandler):
             action = parts[4]
             with LOCK:
                 state = json.loads((root / "state.json").read_text())
+                if action == "options":
+                    if state["status"] != "draft":
+                        raise ValueError(
+                            "Model and context settings lock when training starts; create a new project to change them"
+                        )
+                    from vox.presets import resolve
+
+                    body = self.body()
+                    proposed = {
+                        **state,
+                        "preset": body.get("preset", state.get("preset", "tiny-1m-v1")),
+                        "training_settings": body.get(
+                            "training_settings", state.get("training_settings", {})
+                        ),
+                        "mode": body.get("mode", state.get("mode", "dialogue")),
+                    }
+                    resolve(proposed)
+                    if proposed["mode"] not in ("plain", "dialogue"):
+                        raise ValueError("Choose dialogue or plain text")
+                    write(root / "state.json", proposed)
+                    self.reply(proposed)
+                    return
                 if action in ("edit", "remove", "restore"):
                     from materials import mutate
 
@@ -477,6 +546,7 @@ class Handler(BaseHTTPRequestHandler):
                     CHAT_SESSION = CHAT_PROJECT = None
                     if len(state["files"]) < 3:
                         raise ValueError("Add at least three different episode files")
+                    (root / "stop-request").unlink(missing_ok=True)
                     state.update(status="running", phase="Starting", steps=steps)
                     state.pop("error", None)
                     write(root / "state.json", state)

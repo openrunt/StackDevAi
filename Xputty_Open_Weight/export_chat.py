@@ -80,7 +80,16 @@ class ExportSession:
         if not 8 <= count <= 128 or not 0.1 <= temperature <= 1.5:
             raise ValueError("Use 8–128 response tokens and temperature 0.1–1.5")
         ids = self.tokenizer.encode(prompt, add_special_tokens=False)
-        budget = self.context - count
+        window = int(body.get("context_tokens", self.context))
+        if (
+            window not in (128, 256, 512, 1024, 2048)
+            or window > self.context
+            or window <= count
+        ):
+            raise ValueError(
+                "Context must fit this model and exceed the response token budget"
+            )
+        budget = window - count
         kept = ids[-budget:]
         if not kept:
             raise ValueError("Prompt is empty after tokenization")
@@ -120,16 +129,16 @@ class ExportSession:
 
 
 PAGE = r"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Xputty · Historical chat</title><style>
+<title>Xputty · Model chat</title><style>
 :root{color-scheme:dark}body{background:#090d16;color:#eff4ff;font:16px system-ui;margin:0}main{max-width:820px;margin:auto;padding:32px 20px}h1{font-size:36px;margin:10px 0}p,small{color:#a8b4c8;line-height:1.6}.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,select,input,textarea{background:#141e2e;color:inherit;font:inherit;padding:12px;border:1px solid #ffffff26;border-radius:12px}button{cursor:pointer}button[type=submit]{background:#a7ffda;color:#08251d;font-weight:700}button:disabled{opacity:.5}#messages{min-height:34vh;max-height:52vh;overflow:auto;padding:14px 0}.message{white-space:pre-wrap;padding:16px;background:#141e2e;border-radius:16px;margin:12px 0}.user{margin-left:15%;background:#15332e}.assistant{margin-right:12%}.label{font-size:11px;color:#a7ffda;margin-bottom:8px}textarea{width:100%;box-sizing:border-box;resize:vertical}#status{min-height:24px;font-size:12px}a{color:#a7ffda}</style>
-<main><small>XPUTTY / EXPORTED WEIGHTS</small><h1>A conversation across time.</h1>
+<main data-max-context="__MAX_CONTEXT__"><small>XPUTTY / EXPORTED WEIGHTS</small><h1>Your model. Your conversation.</h1>
 <p>Experimental chat framing for a prose-trained model. It may continue your words or produce fragments. Responses come only from this export.</p>
-<div class="bar"><select id="mode" aria-label="Mode"><option value="chat">Chat · experimental</option><option value="continue">Continue a passage</option></select><label>Creativity <input id="temp" type="range" min="0.1" max="1.5" step="0.1" value="0.8"></label><button id="clear">New conversation</button></div>
+<div class="bar"><select id="mode" aria-label="Mode"><option value="chat">Chat · experimental</option><option value="continue">Continue a passage</option></select><label>Context <select id="context"><option value="256">256</option><option value="512">512</option><option value="1024">1,024</option><option value="2048">2,048</option></select></label><label>Reply <select id="reply"><option value="32">32 tokens</option><option value="64" selected>64 tokens</option><option value="96">96 tokens</option><option value="128">128 tokens</option></select></label><label>Creativity <input id="temp" type="range" min="0.1" max="1.5" step="0.1" value="0.8"></label><button id="clear">New conversation</button></div>
 <div id="messages" role="log" aria-live="polite"></div><form id="form"><textarea id="prompt" rows="3" maxlength="4000" placeholder="What occupies your thoughts this evening?" required aria-label="Your message"></textarea><div class="bar"><button id="send" type="submit">Send ↗</button><small>Rolling context · oldest tokens fall out when the model window fills.</small></div></form><p id="status" role="status"></p></main>
-<script>const $=id=>document.getElementById(id);let key=new URLSearchParams(location.hash.slice(1)).get('key')||sessionStorage.getItem('history-chat-key')||'';if(key)sessionStorage.setItem('history-chat-key',key);history.replaceState(null,'',location.pathname);let messages=[];
+<script>const $=id=>document.getElementById(id);let key=new URLSearchParams(location.hash.slice(1)).get('key')||sessionStorage.getItem('history-chat-key')||'';if(key)sessionStorage.setItem('history-chat-key',key);history.replaceState(null,'',location.pathname);let messages=[];const maxContext=Number(document.querySelector('main').dataset.maxContext)||512;for(const option of [...$('context').options])if(Number(option.value)>maxContext)option.remove();$('context').value=String(maxContext);
 function add(role,text){const d=document.createElement('div');d.className='message '+role;const label=document.createElement('div');label.className='label';label.textContent=role==='user'?'YOU':'MODEL';const content=document.createElement('div');content.textContent=text;d.append(label,content);$('messages').append(d);$('messages').scrollTop=$('messages').scrollHeight}
 $('clear').onclick=()=>{messages=[];$('messages').replaceChildren();$('status').textContent='Conversation cleared.'};$('mode').onchange=()=>$('clear').click();
-$('form').onsubmit=async e=>{e.preventDefault();const text=$('prompt').value.trim();if(!text)return;$('send').disabled=true;$('clear').disabled=true;$('mode').disabled=true;const pending=[...messages.slice(-8),{role:'user',content:text}];$('status').textContent='Generating from your exported weights…';try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({messages:pending,mode:$('mode').value,temperature:Number($('temp').value)})});const result=await r.json();if(!r.ok)throw Error(result.error||'Chat failed');add('user',text);add('assistant',result.text||'[No readable text generated. Try continuation mode.]');messages=result.text?[...pending,{role:'assistant',content:result.text}]:pending;$('prompt').value='';$('status').textContent=`${result.elapsed_seconds}s · ${result.input_tokens}/${result.context_tokens} context tokens · ${result.truncated_tokens} older tokens omitted · weights ${result.weights_sha256.slice(0,12)}`}catch(error){$('status').textContent=error.message}finally{$('send').disabled=false;$('clear').disabled=false;$('mode').disabled=false}};</script></html>"""
+$('form').onsubmit=async e=>{e.preventDefault();const text=$('prompt').value.trim();if(!text)return;$('send').disabled=true;$('clear').disabled=true;$('mode').disabled=true;const pending=[...messages.slice(-8),{role:'user',content:text}];$('status').textContent='Generating from your exported weights…';try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({messages:pending,mode:$('mode').value,temperature:Number($('temp').value),context_tokens:Number($('context').value),max_new_tokens:Number($('reply').value)})});const result=await r.json();if(!r.ok)throw Error(result.error||'Chat failed');add('user',text);add('assistant',result.text||'[No readable text generated. Try continuation mode.]');messages=result.text?[...pending,{role:'assistant',content:result.text}]:pending;$('prompt').value='';$('status').textContent=`${result.elapsed_seconds}s · ${result.input_tokens}/${result.context_tokens} context tokens · ${result.truncated_tokens} older tokens omitted · weights ${result.weights_sha256.slice(0,12)}`}catch(error){$('status').textContent=error.message}finally{$('send').disabled=false;$('clear').disabled=false;$('mode').disabled=false}};</script></html>"""
 
 
 def serve(folder, port=8790):
@@ -153,7 +162,10 @@ def serve(folder, port=8790):
 
         def do_GET(self):
             if urlsplit(self.path).path == "/":
-                self.reply(PAGE, mime="text/html; charset=utf-8")
+                self.reply(
+                    PAGE.replace("__MAX_CONTEXT__", str(session.context)),
+                    mime="text/html; charset=utf-8",
+                )
             else:
                 self.reply({"error": "Not found"}, 404)
 

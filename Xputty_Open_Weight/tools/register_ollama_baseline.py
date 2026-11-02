@@ -9,6 +9,9 @@ parser.add_argument("--name", default="vox-dialogue-timing:baseline-002")
 args = parser.parse_args()
 root = args.run
 model = root / "export/vox-fibra-f16.gguf"
+context = json.loads((root / "export/config.json").read_text())[
+    "max_position_embeddings"
+]
 blob = model.read_bytes()
 digest = "sha256:" + hashlib.sha256(blob).hexdigest()
 base = "http://127.0.0.1:11434"
@@ -38,7 +41,7 @@ created = post(
         "model": args.name,
         "files": {model.name: digest},
         "template": "{{ .Prompt }}",
-        "parameters": {"num_ctx": 512, "temperature": 0.8, "stop": ["<|eod|>"]},
+        "parameters": {"num_ctx": context, "temperature": 0.8, "stop": ["<|eod|>"]},
         "stream": False,
     },
 )
@@ -56,7 +59,7 @@ generated = post(
         "options": {
             "num_predict": 24,
             "temperature": 0,
-            "num_ctx": 512,
+            "num_ctx": context,
             "num_thread": 2,
             "repeat_penalty": 1.0,
         },

@@ -210,6 +210,7 @@ if __name__ == "__main__":
     parser.add_argument("--collect-only", action="store_true")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--steps", type=int, default=2000)
+    parser.add_argument("--preset", choices=["research-48m-v1", "tiny-1m-v1"], default="research-48m-v1")
     args = parser.parse_args()
     root = args.root.resolve()
     if (root / "dense/checkpoint.pt").exists():
@@ -226,6 +227,7 @@ if __name__ == "__main__":
                 created=time.time(),
                 status="draft",
                 mode="plain",
+                preset=args.preset,
                 phase="Collecting historical works",
                 files=[],
             ),

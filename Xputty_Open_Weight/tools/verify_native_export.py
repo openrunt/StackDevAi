@@ -11,7 +11,7 @@ args = parser.parse_args()
 request = json.loads((args.run / "native-request.json").read_text(encoding="utf-8"))
 model = Llama(
     model_path=request["gguf"],
-    n_ctx=512,
+    n_ctx=request.get("context", 512),
     n_threads=2,
     n_threads_batch=2,
     n_gpu_layers=0,

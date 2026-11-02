@@ -187,8 +187,23 @@ class TinyLlama(nn.Module):
             x = x + self.phi_projection(vec)[None, :, :]
         cache = []
         for i, layer in enumerate(self.layers):
-            x, kv = layer(x, None if past is None else past[i])
-            cache.append(kv)
+            if (
+                getattr(self, "gradient_checkpointing", False)
+                and self.training
+                and torch.is_grad_enabled()
+            ):
+                if past is not None or return_cache:
+                    raise ValueError(
+                        "Activation checkpointing training cannot use a KV cache"
+                    )
+                from torch.utils.checkpoint import checkpoint
+
+                x = checkpoint(
+                    lambda h, block=layer: block(h)[0], x, use_reentrant=False
+                )
+            else:
+                x, kv = layer(x, None if past is None else past[i])
+                cache.append(kv)
         logits = self.lm_head(self.norm(x))
         loss = None
         if targets is not None:

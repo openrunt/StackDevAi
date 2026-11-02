@@ -1,67 +1,69 @@
 {
-  "name": "Xputty Open Weight",
-  "version": "0.4.0",
+  "name": "Xputty Open Weight 48M",
+  "version": "0.5.0",
+  "branch": "xputty-open-weight-48m",
+  "architecture": {
+    "parameters": 48116224,
+    "layers": 12,
+    "dim": 512,
+    "heads": 8,
+    "ffn_dim": 1472,
+    "vocab_size": 8192,
+    "max_context": 2048
+  },
   "local_acceptance": {
-    "platform": "Windows-10-10.0.19045-SP0",
-    "tests_passed": 20,
-    "full_build": "passed",
-    "transformers_parity": "passed",
-    "capture_edit_remove_restore_replace": "passed",
-    "packaging_privacy_and_unix_permissions": "passed",
-    "macos_missing_affinity_api_simulation": "passed",
-    "historical_prose_export_and_checkpoint_free_chat": "passed",
-    "historical_collection": "16 live downloads; immutable originals and cleaned working hashes verified",
-    "test_scope": "19-test full suite plus Windows atomic-write retry and updated authenticated chat/continuation acceptance after fixes",
-    "completed_historical_pilot": {
-      "works": 16,
-      "words": 1586007,
-      "updates": 2000,
-      "validation_before": 8.34614,
-      "validation_after": 4.64867,
-      "test_loss": 4.50581,
-      "hf_exact_parity": true,
-      "ollama_generation": true,
-      "model_quality": "fragmented; not coherent assistant acceptance"
-    }
+    "platform": "Windows CPU, Python 3.10, two execution cores",
+    "full_size_updates": 5,
+    "context_updates": {
+      "256": 2,
+      "512": 1,
+      "1024": 1,
+      "2048": 1
+    },
+    "hf_parity": {
+      "256": {
+        "max_logit_difference": 0.0,
+        "passed": true
+      },
+      "512": {
+        "max_logit_difference": 0.0,
+        "passed": true
+      },
+      "1024": {
+        "max_logit_difference": 0.0,
+        "passed": true
+      },
+      "2048": {
+        "max_logit_difference": 0.0,
+        "passed": true
+      }
+    },
+    "ollama_load_and_generation": true,
+    "chat_api_contexts": [
+      256,
+      512,
+      1024,
+      2048
+    ],
+    "exact_resume_unit_test": "passed",
+    "ui_state_tests": "passed (synthetic DOM; no visual browser acceptance)",
+    "observed_post_update_rss_bytes": 1452765184,
+    "four_update_training_seconds": 25.993,
+    "pytest_tests_passed": 25,
+    "full_suite": "passed"
   },
-  "platform_acceptance": {
-    "windows": "0.3.1 verified; 0.4.0 pending CI",
-    "linux": "0.3.1 verified; 0.4.0 pending CI",
-    "macos": "0.3.1 verified; 0.4.0 pending CI",
-    "cuda": "not executed; no CUDA hardware on local test host",
-    "docker": "0.3.1 verified; 0.4.0 pending CI"
-  },
-  "distribution": "OS source/launcher bundles include Vosk and Tika; Python/runtime dependencies install at first launch, not native executables",
+  "ci_status": "pending publication",
   "limitations": [
-    "Research model output remains fragmented",
-    "Single-owner worker; not multi-tenant",
-    "Chrome visual automation unavailable",
-    "Binary phase ledger and PyQoS integration not claimed",
-    "Historical pilot is literature-heavy; original work dates curated, edition purity not exhaustively audited; prose pretraining is not instruction tuning"
+    "Five-update acceptance model is not a coherent podcast host",
+    "Chrome visual acceptance not automated",
+    "CUDA and MPS execution not verified; macOS uses CPU",
+    "Whole-source holdouts and token loss do not establish conversational quality"
   ],
   "publication_exclusions": [
-    "access keys",
-    "user captures",
     "project storage",
-    "virtual environments",
-    "trained research weights"
-  ],
-  "shell_launcher_syntax": "bash -n passed",
-  "ci_run": null,
-  "ci_verified_commit": null,
-  "release_url": null,
-  "unverified_hardware": [
-    "CUDA GPU",
-    "Intel Mac",
-    "Windows ARM"
-  ],
-  "bootstrap_fix": {
-    "python314_rejected": true,
-    "dependency_preflight": true,
-    "old_environments_backed_up": true,
-    "codespaces_python": "3.11",
-    "fresh_install_ci": "passed at 0.3.1"
-  },
-  "previous_ci_run": "https://github.com/openrunt/StackDevAi/actions/runs/41352689065",
-  "previous_ci_verified_commit": "8ecda12ec39ff9033c921dab2c290f89ff121031"
+    "access tokens",
+    "user transcripts",
+    "trained weights",
+    "virtual environments"
+  ]
 }

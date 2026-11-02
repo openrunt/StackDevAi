@@ -48,6 +48,20 @@ def run(root, steps=400):
     root = Path(root)
     state = json.loads((root / "state.json").read_text())
     ledger = root / "events.jsonl"
+    from vox.presets import resolve, policy_for
+
+    try:
+        settings = resolve(state)
+        mixed = "preset" in state
+        if mixed:
+            saved = root / "build-settings.json"
+            if saved.exists() and json.loads(saved.read_text()) != settings:
+                raise ValueError("Build settings are locked to the original experiment")
+            write(saved, settings)
+    except Exception as error:
+        state.update(status="failed", error=str(error))
+        write(root / "state.json", state)
+        raise
 
     def phase(label, **details):
         state.update(status="running", phase=label, **details)
@@ -134,37 +148,81 @@ def run(root, steps=400):
                 report = build_plain(sources, root / "data", provenance=provenance)
             else:
                 report = build(sources, root / "data")
-            tokenize(root / "data", 4096)
+            tokenizer_report = tokenize(root / "data", settings["vocab_size"])
+            if (
+                settings["preset"] == "research-48m-v1"
+                and tokenizer_report["vocab_size"] != 8192
+            ):
+                raise ValueError(
+                    "This material cannot support the 8,192-token vocabulary. Add more varied text in a new project, or choose the quick pipeline preset."
+                )
             prepare(root / "data")
         report = json.loads((root / "data/corpus_report.json").read_text())
         phase("Training", episodes=report["episodes"], steps=steps)
         options = dict(
-            seq_len=512, dim=128, layers=3, heads=4, ffn_dim=320, batch=2, cores=2
+            seq_len=settings["max_context"],
+            dim=settings["dim"],
+            layers=settings["layers"],
+            heads=settings["heads"],
+            ffn_dim=settings["ffn_dim"],
+            batch=settings["micro_batch"],
+            cores=2,
+            lr=settings["lr"],
+            max_context=settings["max_context"],
+            training_policy=policy_for(settings) if mixed else None,
         )
+        eval_windows = settings["windows"] if mixed else [512]
+
+        def assess(split):
+            by_context = {
+                str(n): evaluate(
+                    root / "data",
+                    checkpoint,
+                    split=split,
+                    samples=settings["eval_samples"] if mixed else 32,
+                    cores=2,
+                    context=n,
+                )
+                for n in eval_windows
+            }
+            summary = dict(by_context[str(max(eval_windows))])
+            summary["by_context"] = by_context
+            return summary
+
         checkpoint = root / "dense/checkpoint.pt"
         if not checkpoint.exists():
             train(root / "data", root / "dense", steps=0, **options)
             write(
                 root / "before.json",
-                evaluate(root / "data", checkpoint, split="val", samples=32, cores=2),
+                assess("val"),
             )
-        train(
+        trained = train(
             root / "data",
             root / "dense",
             steps=steps,
             resume=True,
-            save_every=25,
-            log_interval=25,
+            save_every=settings["save_every"],
+            log_interval=5 if mixed else 25,
             **options,
         )
+        if (root / "stop-request").exists():
+            state.update(
+                status="stopped", phase=f"Stopped; saved update {trained['step']}"
+            )
+            write(root / "state.json", state)
+            (root / "stop-request").unlink(missing_ok=True)
+            return
         phase("Evaluating")
-        metrics = {
-            s: evaluate(root / "data", checkpoint, split=s, samples=32, cores=2)
-            for s in ["val", "test"]
-        }
+        metrics = {s: assess(s) for s in ["val", "test"]}
         write(root / "metrics.json", metrics)
         phase("Exporting")
         export(root / "data", checkpoint, root / "export", cores=2)
+        if (root / "build-settings.json").exists():
+            import shutil
+
+            shutil.copy2(
+                root / "build-settings.json", root / "export/build-settings.json"
+            )
         # Exported weights can be opened independently, without the training checkpoint.
         import shutil
 
@@ -263,6 +321,14 @@ def run(root, steps=400):
             + ". See export_report.json.\n"
         )
         card.write_text(text, encoding="utf-8")
+        training = json.loads((root / "dense/training_report.json").read_text())
+        card.write_text(
+            card.read_text(encoding="utf-8")
+            + "\nActual context updates: "
+            + json.dumps(training.get("context_updates", {}))
+            + ". Maximum configured context is not proof of long-context quality. See reports/training_report.json.\n",
+            encoding="utf-8",
+        )
         with zipfile.ZipFile(root / "model.zip", "w", zipfile.ZIP_DEFLATED) as z:
             for file in (root / "export").iterdir():
                 if file.is_file():
@@ -277,6 +343,7 @@ def run(root, steps=400):
             for name in ["native-verification.json", "ollama-verification.json"]:
                 if (root / name).exists():
                     z.write(root / name, "reports/" + name)
+            z.write(root / "dense/training_report.json", "reports/training_report.json")
         phase("Ready", metrics=metrics, checks=checks)
         state.update(status="complete", file=None)
         write(root / "state.json", state)

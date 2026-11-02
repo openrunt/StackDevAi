@@ -67,6 +67,27 @@ with torch.inference_mode():
     )
 report["max_logit_difference"] = difference
 report["logits_match"] = difference < 1e-4
+context_checks = {}
+if checkpoint.get("training_policy"):
+    base_ids = sp.encode(
+        "A conversation connects earlier ideas with the current question. ",
+        out_type=int,
+    )
+    with torch.inference_mode():
+        for length in checkpoint["training_policy"]["windows"]:
+            context_ids = (base_ids * (length // len(base_ids) + 1))[:length]
+            batch = torch.tensor([context_ids])
+            reference_last = reference(batch)[0][0, -1].float()
+            exported_last = model(batch).logits[0, -1].float()
+            maximum = float((reference_last - exported_last).abs().max())
+            context_checks[str(length)] = {
+                "max_logit_difference": maximum,
+                "passed": maximum < 1e-4,
+            }
+    report["context_checks"] = context_checks
+    report["logits_match"] = report["logits_match"] and all(
+        row["passed"] for row in context_checks.values()
+    )
 report["generation"] = sp.decode(generated[0, len(ids) :].tolist())
 report["all_tokenizer_probes_match"] = all(
     p["matches"] for probes in report["tokenizers"].values() for p in probes
@@ -78,6 +99,7 @@ report["all_tokenizer_probes_match"] = all(
     json.dumps(
         {
             "gguf": str((export / "vox-fibra-f16.gguf").resolve()),
+            "context": checkpoint["config"]["context"],
             "probes": [{"text": p, "ids": sp.encode(p, out_type=int)} for p in probes],
             "eval_ids": ids,
             "reference_logits": expected[0, -1].tolist(),

@@ -9,7 +9,7 @@ from .model import ModelConfig, TinyLlama
 from .tokenizer import sha256
 
 
-def evaluate(data, ckpt, split="test", samples=60, cores=2):
+def evaluate(data, ckpt, split="test", samples=60, cores=2, context=None):
     torch = limit_cpu(cores)
     ckp = torch.load(ckpt, map_location="cpu", weights_only=True)
     prepared = json.loads((Path(data) / "prepared_report.json").read_text())
@@ -26,7 +26,10 @@ def evaluate(data, ckpt, split="test", samples=60, cores=2):
     model = TinyLlama(c)
     model.load_state_dict(ckp["weights"])
     model.eval()
-    ds = CorpusSamples(data, split, c.context, stage=ckp["stage"])
+    window = context or c.context
+    if not 16 <= window <= c.context:
+        raise ValueError("Evaluation window is outside the model context")
+    ds = CorpusSamples(data, split, window, stage=ckp["stage"])
     results = []
     t0 = time.perf_counter()
     role_totals = {
@@ -60,6 +63,7 @@ def evaluate(data, ckpt, split="test", samples=60, cores=2):
         episode_disjoint=True,
         origin=ckp["run_kind"],
         samples=samples,
+        context_tokens=window,
         mean_token_loss=round(mean, 5),
         approx_perplexity=round(math.exp(min(mean, 40)), 3),
         duration_seconds=round(time.perf_counter() - t0, 3),

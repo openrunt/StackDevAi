@@ -21,6 +21,28 @@ def atomic_torch_save(obj, path, torch):
     os.replace(tmp, p)
 
 
+def progress_json(path, value):
+    import tempfile
+
+    path = Path(path)
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=path.parent, delete=False
+    ) as stream:
+        temporary = Path(stream.name)
+        stream.write(json.dumps(value))
+    try:
+        for attempt in range(9):
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError:
+                if attempt == 8:
+                    raise
+                time.sleep(min(0.01 * 2**attempt, 0.25))
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def train(
     data_dir,
     run_dir,
@@ -42,6 +64,8 @@ def train(
     context_turns=3,
     save_every=200,
     init_from=None,
+    max_context=None,
+    training_policy=None,
 ):
     # Limit before heavy initialization.
     torch = limit_cpu(cores)
@@ -74,7 +98,7 @@ def train(
         layers=layers,
         heads=heads,
         ffn_dim=ffn_dim,
-        context=seq_len,
+        context=max_context or seq_len,
         experiment=experiment,
     )
     import torch.nn.utils as nn_utils
@@ -95,6 +119,14 @@ def train(
     if device == "cuda" and not torch.cuda.is_available():
         raise ValueError("CUDA requested but unavailable")
     model = TinyLlama(config).to(device)
+    model.gradient_checkpointing = bool(
+        training_policy and training_policy.get("activation_checkpointing")
+    )
+    if training_policy:
+        from .presets import window_for_step, learning_rate, digest
+
+        if any(n > config.context for n in training_policy["windows"]):
+            raise ValueError("Training window exceeds architectural context")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.05)
     start_step = 0
     prior = []
@@ -147,6 +179,10 @@ def train(
             raise ValueError("checkpoint timing serialization mismatch")
         if asdict(config) != prev["config"]:
             raise ValueError("checkpoint model architecture mismatch")
+        if prev.get("training_policy") != training_policy:
+            raise ValueError(
+                "Training policy differs from the saved checkpoint; keep its windows, budget and learning-rate schedule"
+            )
         model.load_state_dict(prev["weights"])
         if stage == prev["stage"]:
             optimizer.load_state_dict(prev["optimizer"])
@@ -158,8 +194,21 @@ def train(
             raise ValueError("invalid stage transition")
         prior = prev.get("history", [])
         parent_lineage = prev.get("parent_lineage", {})
-    train_ds = CorpusSamples(d, "train", seq_len, stage, context_turns)
-    val_ds = CorpusSamples(d, "val", seq_len, stage, context_turns)
+    lengths = training_policy["windows"] if training_policy else [seq_len]
+    train_sets = {
+        n: CorpusSamples(d, "train", n, stage, context_turns) for n in lengths
+    }
+    val_sets = {n: CorpusSamples(d, "val", n, stage, context_turns) for n in lengths}
+    context_counts = dict(prev.get("context_updates", {})) if ckpt.exists() else {}
+    processed_tokens = (
+        int(prev.get("cumulative_tokens_processed", prev.get("tokens_processed", 0)))
+        if ckpt.exists()
+        else 0
+    )
+    actual_targets = (
+        int(prev.get("cumulative_target_tokens", 0)) if ckpt.exists() else 0
+    )
+    original_processed = processed_tokens
     model.train()
     maxrss = 0
     start = time.perf_counter()
@@ -197,7 +246,12 @@ def train(
             parent_lineage=parent_lineage,
             total_lineage_updates=parent_lineage.get("parent_lineage_updates", 0)
             + int(done),
-            tokens_processed=int(done - start_step) * batch * seq_len,
+            tokens_processed=processed_tokens - original_processed,
+            cumulative_tokens_processed=processed_tokens,
+            cumulative_target_tokens=actual_targets,
+            context_updates=context_counts,
+            training_policy=training_policy,
+            training_policy_sha256=digest(training_policy) if training_policy else None,
             framework="pytorch-weights-only-new-corpus"
             if init_from
             else "pytorch-from-random-init"
@@ -213,34 +267,77 @@ def train(
 
     done = start_step
     for step in range(start_step, int(steps)):
-        xs, ys = [], []
-        for j in range(batch):
-            x, y, _ = train_ds.sample(step * batch + j, seed)
-            xs.append(x)
-            ys.append(y)
-        x = torch.tensor(np.stack(xs), dtype=torch.long, device=device)
-        y = torch.tensor(np.stack(ys), dtype=torch.long, device=device)
+        if (r.parent / "stop-request").exists():
+            stop_requested[0] = True
+            break
+        window = (
+            window_for_step(training_policy, step, seed) if training_policy else seq_len
+        )
+        accumulation = (
+            max(
+                1,
+                (training_policy["tokens_per_update"] + batch * window - 1)
+                // (batch * window),
+            )
+            if training_policy
+            else 1
+        )
+        if training_policy:
+            for group in optimizer.param_groups:
+                group["lr"] = learning_rate(training_policy, step, lr)
         optimizer.zero_grad(set_to_none=True)
-        _, loss = model(x, y)
-        if not torch.isfinite(loss):
-            raise ValueError("non-finite training loss")
-        loss.backward()
-        norm = nn_utils.clip_grad_norm_(model.parameters(), 1.0)
+        accumulated_loss = 0.0
+        step_started = time.perf_counter()
+        for micro in range(accumulation):
+            xs, ys = [], []
+            for j in range(batch):
+                # A stable seed per update/microbatch makes resume independent of earlier window lengths.
+                sample_step = (
+                    step * batch + j
+                    if not training_policy
+                    else step * 100000 + micro * batch + j
+                )
+                x, y, info = train_sets[window].sample(sample_step, seed)
+                xs.append(x)
+                ys.append(y)
+                actual_targets += info["loss_tokens"]
+            x = torch.tensor(np.stack(xs), dtype=torch.long, device=device)
+            y = torch.tensor(np.stack(ys), dtype=torch.long, device=device)
+            _, loss = model(x, y)
+            if not torch.isfinite(loss):
+                raise ValueError("non-finite training loss")
+            (loss / accumulation).backward()
+            accumulated_loss += float(loss.detach()) / accumulation
+            processed_tokens += batch * window
+        nn_utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
+        if (r.parent / "stop-request").exists():
+            stop_requested[0] = True
         peak = memory_guard(limit_gb)
         maxrss = max(maxrss, peak)
         done = step + 1
+        context_counts[str(window)] = context_counts.get(str(window), 0) + 1
         elapsed = time.perf_counter() - start
         rec = {
             "step": done,
-            "train_loss": round(float(loss.detach()), 6),
+            "train_loss": round(accumulated_loss, 6),
             "elapsed_seconds": round(elapsed, 3),
             "rss_bytes": peak,
+            "context_tokens": window,
+            "microbatches": accumulation,
+            "learning_rate": optimizer.param_groups[0]["lr"],
+            "tokens_per_second": round(
+                batch
+                * window
+                * accumulation
+                / max(0.001, time.perf_counter() - step_started),
+                2,
+            ),
         }
         if done % log_interval == 0 or step == start_step or done == steps:
             model.eval()
             with torch.inference_mode():
-                vx, vy, _ = val_ds.sample(step + 100000, seed)
+                vx, vy, _ = val_sets[window].sample(step + 100000, seed)
                 _, vl = model(
                     torch.tensor(vx[None, :], device=device),
                     torch.tensor(vy[None, :], device=device),
@@ -249,6 +346,15 @@ def train(
             model.train()
             print(json.dumps(rec), flush=True)
             history.append(rec)
+            progress_json(
+                r / "progress.json",
+                {
+                    **rec,
+                    "target_updates": int(steps),
+                    "cumulative_tokens_processed": processed_tokens,
+                    "context_updates": context_counts,
+                },
+            )
         if done % save_every == 0 or stop_requested[0]:
             checkpoint(done)
             if stop_requested[0]:
@@ -278,6 +384,11 @@ if __name__ == "__main__":
         default="dense",
     )
     p.add_argument("--steps", type=int, default=50)
+    p.add_argument(
+        "--preset",
+        choices=["research-48m-v1", "tiny-1m-v1"],
+        help="Preset controls architecture and mixed-context schedule",
+    )
     p.add_argument("--seq-len", type=int, default=128)
     p.add_argument("--dim", type=int, default=128)
     p.add_argument("--layers", type=int, default=3)
@@ -296,6 +407,23 @@ if __name__ == "__main__":
         help="Explicit weights-only initialization with a frozen matching tokenizer; permits a new corpus",
     )
     a = p.parse_args()
+    extra = {}
+    if a.preset:
+        from .presets import resolve, policy_for
+
+        chosen = resolve({"preset": a.preset})
+        a.seq_len = chosen["max_context"]
+        a.dim, a.layers, a.heads, a.ffn_dim = (
+            chosen["dim"],
+            chosen["layers"],
+            chosen["heads"],
+            chosen["ffn_dim"],
+        )
+        a.batch, a.lr = chosen["micro_batch"], chosen["lr"]
+        extra = {
+            "max_context": chosen["max_context"],
+            "training_policy": policy_for(chosen),
+        }
     s = train(
         a.data,
         a.run,
@@ -316,6 +444,7 @@ if __name__ == "__main__":
         a.log_interval,
         save_every=a.save_every,
         init_from=a.init_from,
+        **extra,
     )
     print(
         json.dumps(

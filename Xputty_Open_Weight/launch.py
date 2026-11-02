@@ -8,7 +8,7 @@ from server import TOKEN, BASE
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-browser", action="store_true")
-    parser.add_argument("--port", type=int, default=8788)
+    parser.add_argument("--port", type=int, default=8791)
     args = parser.parse_args()
     base = f"http://127.0.0.1:{args.port}"
 
