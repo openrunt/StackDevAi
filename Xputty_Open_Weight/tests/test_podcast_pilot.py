@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from export_chat import budget_messages, framed_messages, OllamaSession, render_page
+from export_chat import budget_messages, framed_messages, OllamaSession, render_page, generation_end_ids
 from vox.podcast_distill import select_reply, PERSONAS
 from vox.podcast_review import REPLIES
 from types import SimpleNamespace
@@ -96,6 +96,10 @@ def test_native_reference_uses_explicit_sampling_and_disables_thinking(tmp_path,
     assert requests[-1]['think'] is False
     assert requests[-1]['options']['top_p'] == 0.8
     assert requests[-1]['options']['num_thread'] == 2
+    payload, *_ = session._prepare_request({'messages': [{'role': 'user', 'content': 'Finish your idea'}], 'max_new_tokens': 256, 'context_tokens': 512})
+    assert payload['options']['num_predict'] == 256
+    with pytest.raises(ValueError, match='budget'):
+        session._prepare_request({'messages': [{'role': 'user', 'content': 'Hello'}], 'max_new_tokens': 256, 'context_tokens': 256})
     assert all(v['enable_thinking'] is False for v in template_options)
     events = list(session.stream({'messages': [{'role': 'user', 'content': 'Hello'}], 'persona_id': 'nova', 'context_tokens': 512}))
     assert [e['event'] for e in events] == ['start', 'delta', 'delta', 'complete']
@@ -105,3 +109,9 @@ def test_native_reference_uses_explicit_sampling_and_disables_thinking(tmp_path,
     truncate[0] = True
     with pytest.raises(ValueError, match='without a completion'):
         list(session.stream({'messages': [{'role': 'user', 'content': 'Hello'}], 'context_tokens': 512}))
+
+
+def test_generation_can_stop_on_multiple_model_end_tokens():
+    assert generation_end_ids([2, 7, 2], 9) == [2, 7, 9]
+    assert generation_end_ids(0, None) == [0]
+    assert generation_end_ids(None, None) == []

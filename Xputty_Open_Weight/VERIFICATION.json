@@ -1,6 +1,6 @@
 {
   "name": "Xputty Open Weight 48M",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "branch": "xputty-open-weight-48m",
   "architecture": {
     "parameters": 48116224,
@@ -11,7 +11,7 @@
     "vocab_size": 8192,
     "max_context": 2048
   },
-  "ci_status": "0.5.1 esmoai CI passed; 0.5.2 publishing to writable openrunt/StackDevAi branch",
+  "ci_status": "Per-commit GitHub Actions checks are authoritative; previous 0.5.2 accepted at run 41521419277",
   "limitations": [
     "Five-update acceptance model is not a coherent podcast host",
     "Chrome visual acceptance not automated",
@@ -28,7 +28,7 @@
     "virtual environments"
   ],
   "previous_mechanics_acceptance": {
-    "platform": "Windows CPU, Python 3.10, two execution cores",
+    "platform": "Windows CPU, Python 3.10; two threads on sibling logical CPUs (placement corrected in 0.5.3)",
     "full_size_updates": 5,
     "context_updates": {
       "256": 2,
@@ -69,15 +69,18 @@
     "full_suite": "passed"
   },
   "current_software_tests": {
-    "full_suite_tests_passed": 44,
-    "full_suite_seconds": 108.67,
-    "scope": "Windows CPU, Python 3.10",
+    "full_suite_tests_passed": 56,
+    "full_suite_seconds": 107.76,
+    "scope": "Windows CPU, Python 3.10; synthetic DOM checked separately",
     "node_ui_state": "passed",
     "node_chat_state": "passed including streamed UTF-8 and actor-role history",
     "real_native_http_stream": "passed; 401 missing token, 403 wrong Origin",
     "chrome_visual_acceptance": "not completed: computer-use runtime cannot write kernel assets",
-    "linux_macos_ci": "0.5.1 passed; 0.5.2 pending",
-    "previous_ci": "https://github.com/esmoai/living-universe/actions/runs/41506407213"
+    "linux_macos_ci": "0.5.2 passed; consult Actions for the new source commit",
+    "previous_ci": "https://github.com/openrunt/StackDevAi/actions/runs/41521419277",
+    "previous_full_suite_tests_passed": 44,
+    "current_collected_tests": 56,
+    "new_focused_checks": "passed: exact HF/GGUF resume, cached gradients, role curriculum, EOS lists, CPU placement and process locks"
   },
   "public_experiments": {
     "scratch_48m_updates": 200,
@@ -176,7 +179,83 @@
         ]
       },
       "quality": "Shorter and less repetitive under actor-perspective protocol, but shallow and not release-ready as an unattended host"
+    },
+    "smol360_social": {
+      "completed_updates": 160,
+      "selected_update": 160,
+      "before_val": 1.8959328373142286,
+      "selected_val": 1.8480664309009884,
+      "final_test": 2.209301176273598,
+      "native_weights_sha256": "4b9434347cc0d73b2c7168d6386b9e7be5e1b6d37b83a4066114e1460146fa5e",
+      "quality": "Repeated and meta-advisory group responses; negative host-quality result",
+      "cache_preparation_seconds": 400.708,
+      "update_phase_seconds": 296.323
+    },
+    "cast_15b": {
+      "completed_updates": 160,
+      "selected_update": 80,
+      "before_val": 3.751727700386882,
+      "selected_val": 3.4546316615096084,
+      "final_test": 3.403489554079273,
+      "native_weights_sha256": "268fab58efdb0425ab72e505ac1c66543d95bd2496c05305879a47cf7e75ff8d",
+      "quality": "Free cast probe remained meta and repetitive; simpler identity framing helps individual replies but does not establish a coherent podcast",
+      "target_counts": {
+        "train": 128,
+        "val": 32,
+        "test": 32
+      },
+      "hf_runtime": {
+        "schema": "xow-sharded-hf-runtime/1",
+        "weights_sha256": "1810d7e52cdb5c1b67ed6c60af40ca493dbd34240255f2fd585868758aa5675d",
+        "source_gguf_sha256": "268fab58efdb0425ab72e505ac1c66543d95bd2496c05305879a47cf7e75ff8d",
+        "loaded_without_missing_or_unexpected_keys": true,
+        "sampled_tensors_checked": 339,
+        "all_sampled_f16_values_match_source": true,
+        "parameter_count": 1777088000,
+        "dtype": "torch.float16",
+        "observed_rss_bytes": 3775709184,
+        "outputs": [
+          {
+            "prompt": "Which planet is the largest in our solar system? Answer briefly.",
+            "text": "The largest planet in our solar system is Jupiter.",
+            "wall_seconds": 32.71424299996579
+          },
+          {
+            "prompt": "In a story, slow zombies never sleep but humans do. Why might that be dangerous?",
+            "text": "The statement that slow zombies never sleep but humans do is a metaphorical way of saying that slow zombies are very slow and take a lot of time to move, while humans are fast and can move quickly. The danger in this scenario could be",
+            "wall_seconds": 61.910176300036255
+          }
+        ],
+        "limitations": [
+          "Sampled first/last rows in each matrix; full equality is additionally covered on the small round-trip fixture",
+          "F16 storage rounding and native quantized activation arithmetic are not bit-identical",
+          "Successful loading and two replies do not establish conversational quality"
+        ]
+      }
     }
   },
-  "publication_target": "openrunt/StackDevAi:xputty-open-weight-48m"
+  "publication_target": "openrunt/StackDevAi:xputty-open-weight-48m",
+  "cpu_placement_correction": {
+    "observed_old_affinity": [
+      0,
+      1
+    ],
+    "observed_physical_core_groups": [
+      [
+        0,
+        1
+      ],
+      [
+        2,
+        3
+      ]
+    ],
+    "verified_new_affinity": [
+      0,
+      2
+    ],
+    "requested_torch_threads": 2,
+    "note": "Earlier Torch timings used sibling logical processors on one physical core. Native Ollama placement is separate."
+  },
+  "artifact_retention": "Native controls and selected weights retained; redundant older HF shards/full control export compacted with local hash manifests"
 }

@@ -56,6 +56,35 @@ solve finished delivery, grounding or conversational variety.
 
 ## Delivery and debugging fixes
 
+The additional unadapted SmolLM2-360M Q8 control was fast in four short requests:
+median first text 0.286 seconds and total 1.274 seconds. It also repeated earlier
+contributions, confused speakers and emitted assistant-style commentary. A separate
+160-update social adaptation selected update 160 (validation 1.89593 to 1.84807;
+test 2.20930), but its native group responses still included advice about how to
+speak, contradictions and repeated lines. This remains a negative host-quality
+result. A higher count of replies ending before the limit did not make it coherent.
+
+The optional frozen-prefix control matched the uncached 360M losses exactly at
+updates 1, 10, 20, 30, 40, 50 and 60. Its update phase reached 60 in 120.61 seconds
+versus 459.23 seconds uncached. Preparation added 400.71 seconds and 149,832,960
+bytes of activation storage. The full cached 160-update phase took 296.32 seconds,
+excluding preparation and export. Short experiments may not amortize that setup.
+
+Those paired cached/uncached Torch measurements used logical processors 0 and 1.
+Windows topology inspection subsequently showed both are siblings of one physical
+core. The CPU limiter now selects one allowed logical processor per physical core
+(0 and 2 here). This fixes placement; a new isolated speedup measurement has not
+been established. Native Ollama inference runs in a separate process.
+
+A separate original 24-episode cast curriculum kept complete prior self/peer
+contributions and held entire topics out. The 1.5B adapter selected update 80 of
+160: validation 3.75173 to 3.45463; test 3.40349. Its free conversation still
+repeated generic questions and confused the topic. This is another negative
+host-quality result. A six-request identity-framing ablation also found that
+simple direct character instructions sometimes worked better than elaborate
+roleplay instructions, including on the unadapted base. Prompt effects must be
+separated from weight changes; six replies are not a general quality evaluation.
+
 Chat now shows submitted input immediately, preserves a new draft while waiting,
 streams native generated tokens, and marks length-limited replies. Switching the
 selected character correctly maps peers to user context and self to assistant
@@ -75,12 +104,15 @@ reports match their recorded hashes. Changed inputs trigger verification again.
 
 ## Verification coverage
 
-The 0.5.2 Windows suite passed 44 Python tests. Browser client state tests exercise
+The 0.5.2 suite passed 44 Python tests on Windows, Linux and macOS. Version 0.5.3
+adds acceptance checks for exact resume, frozen-prefix parity, single-writer
+locks, actor curriculum, GGUF adapter caching, CPU topology and reply budgets.
+Browser client state tests exercise
 immediate input, streaming UTF-8 boundaries, retry, draft preservation and actor
 roles through a simulated DOM. Actual native HTTP and Transformers runtime checks
-are separate from those tests. Version 0.5.1 passed GitHub Actions on Windows,
-Linux and macOS, Docker packaging and Codespaces startup; 0.5.2 has its own CI run.
-See the branch Actions page for its current status.
+are separate from those tests. Version 0.5.2 passed Docker packaging, Codespaces
+startup and the release workflow. Each new commit has its own CI run; consult
+the branch Actions page for the current result.
 
 ## Still unfinished
 

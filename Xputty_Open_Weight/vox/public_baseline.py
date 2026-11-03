@@ -18,6 +18,8 @@ MODEL = "HuggingFaceTB/SmolLM2-135M-Instruct"
 MODEL_REVISION = "12fd25f77366fa6b3b4b768ec3050bf629380bac"
 REFERENCES = {
     "smollm135": {"model": MODEL, "revision": MODEL_REVISION, "folder": "SmolLM2-135M-Instruct"},
+    "smollm360": {"model": "HuggingFaceTB/SmolLM2-360M-Instruct", "revision": "a10cc1512eabd3dde888204e902eca88bddb4951", "folder": "SmolLM2-360M-Instruct",
+                   "weights_sha256": "e6bffe7435d7ddc10fd3b9a9efd429dafbacb1cb17015fb5562664e7532bf86e"},
     "qwen05": {"model": "Qwen/Qwen2.5-0.5B-Instruct", "revision": "7ae557604adf67be50417f59c2c2f167def9a775", "folder": "Qwen2.5-0.5B-Instruct"},
 }
 SOURCE_FILES = {
@@ -196,7 +198,8 @@ def fetch_control(cache, reference="smollm135"):
     for name in names:
         if info["model"].startswith("Qwen/") and name == "special_tokens_map.json":
             continue
-        download(f"https://huggingface.co/{info['model']}/resolve/{info['revision']}/{name}", folder / name)
+        expected = info.get("weights_sha256") if name == "model.safetensors" else None
+        download(f"https://huggingface.co/{info['model']}/resolve/{info['revision']}/{name}", folder / name, expected)
     download("https://www.apache.org/licenses/LICENSE-2.0.txt", folder / "LICENSE",
              "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30")
     return folder

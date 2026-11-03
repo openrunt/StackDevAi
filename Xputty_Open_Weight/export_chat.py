@@ -36,6 +36,12 @@ def weights_identity(folder):
     return hashlib.sha256(json.dumps({'index_sha256': digest(index), 'files': files}, sort_keys=True).encode()).hexdigest()
 
 
+def generation_end_ids(configured, extra=None):
+    values = list(configured) if isinstance(configured, (list, tuple)) else [configured]
+    values.append(extra)
+    return list(dict.fromkeys(value for value in values if type(value) is int and value >= 0))
+
+
 def format_prompt(messages, mode="chat"):
     if mode not in ("chat", "continue"):
         raise ValueError("Choose chat or continue")
@@ -91,7 +97,7 @@ class ExportSession:
         self.persona_profiles = metadata.get("persona_profiles", {})
         self.persona_rules = metadata.get("persona_rules", "")
         self.default_temperature = float(metadata.get('default_temperature', 0.8))
-        self.end_id = self.tokenizer.convert_tokens_to_ids("<|eod|>")
+        self.end_id = self.tokenizer.convert_tokens_to_ids("<|eod|>") if "<|eod|>" in self.tokenizer.get_vocab() else None
 
     def respond(self, body):
         import time
@@ -107,8 +113,8 @@ class ExportSession:
             persona = None
         count = int(body.get("max_new_tokens", 96))
         temperature = float(body.get("temperature", 0.8))
-        if not 8 <= count <= 128 or not 0.1 <= temperature <= 1.5:
-            raise ValueError("Use 8–128 response tokens and temperature 0.1–1.5")
+        if not 8 <= count <= 256 or not 0.1 <= temperature <= 1.5:
+            raise ValueError("Use 8–256 response tokens and temperature 0.1–1.5")
         ids = self.tokenizer.encode(prompt, add_special_tokens=False)
         window = int(body.get("context_tokens", self.context))
         if (
@@ -127,8 +133,7 @@ class ExportSession:
             kept = ids[-budget:]
         if not kept:
             raise ValueError("Prompt is empty after tokenization")
-        eos = list(set([self.model.config.eos_token_id, self.end_id]))
-        eos = [n for n in eos if isinstance(n, int) and n > 0]
+        eos = generation_end_ids(self.model.config.eos_token_id, self.end_id)
         started = time.perf_counter()
         with self.lock, self.torch.inference_mode():
             inputs = self.torch.tensor([kept])
@@ -147,6 +152,7 @@ class ExportSession:
         text = self.tokenizer.decode(output[0, len(kept) :], skip_special_tokens=True)
         for marker in ("<|eod|>", "\nVisitor:", "\nCompanion:"):
             text = text.split(marker)[0]
+        complete = len(output[0]) - len(kept) < count or int(output[0, -1]) in eos
         return dict(
             text=text.strip(),
             raw=raw,
@@ -154,6 +160,8 @@ class ExportSession:
             input_tokens=len(kept),
             truncated_tokens=max(0, original_tokens - len(kept)),
             output_tokens=len(output[0]) - len(kept),
+            response_complete=complete,
+            done_reason="stop" if complete else "length",
             context_tokens=window,
             model_max_context=self.context,
             weights_sha256=self.weights_sha256,
@@ -171,7 +179,7 @@ PAGE = r"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="view
 :root{color-scheme:dark}body{background:#090d16;color:#eff4ff;font:16px system-ui;margin:0}main{max-width:820px;margin:auto;padding:32px 20px}h1{font-size:36px;margin:10px 0}p,small{color:#a8b4c8;line-height:1.6}.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,select,input,textarea{background:#141e2e;color:inherit;font:inherit;padding:12px;border:1px solid #ffffff26;border-radius:12px}button{cursor:pointer}button[type=submit]{background:#a7ffda;color:#08251d;font-weight:700}button:disabled{opacity:.5}#messages{min-height:34vh;max-height:52vh;overflow:auto;padding:14px 0}.message{white-space:pre-wrap;padding:16px;background:#141e2e;border-radius:16px;margin:12px 0}.user{margin-left:15%;background:#15332e}.assistant{margin-right:12%}.label{font-size:11px;color:#a7ffda;margin-bottom:8px}textarea{width:100%;box-sizing:border-box;resize:vertical}#status{min-height:24px;font-size:12px}a{color:#a7ffda}</style>
 <main data-max-context="__MAX_CONTEXT__" data-stream="__STREAM__" data-endpoint="__CHAT_ENDPOINT__"><small>XPUTTY / EXPORTED WEIGHTS</small><h1>Your model. Your conversation.</h1>
 <p>__MODEL_DESCRIPTION__</p>
-<div class="bar">__PERSONA_CONTROL__<select id="mode" aria-label="Mode"><option value="chat">Chat · experimental</option><option value="continue">Continue a passage</option></select><label>Context <select id="context"><option value="256">256</option><option value="512">512</option><option value="1024">1,024</option><option value="2048">2,048</option></select></label><label>Reply <select id="reply"><option value="32">32 tokens</option><option value="64">64 tokens</option><option value="96" selected>96 tokens</option><option value="128">128 tokens</option></select></label><label>Creativity <input id="temp" type="range" min="0.1" max="1.5" step="0.1" value="0.8"></label><button id="clear">New conversation</button></div>
+<div class="bar">__PERSONA_CONTROL__<select id="mode" aria-label="Mode"><option value="chat">Chat · experimental</option><option value="continue">Continue a passage</option></select><label>Context <select id="context"><option value="256">256</option><option value="512">512</option><option value="1024">1,024</option><option value="2048">2,048</option></select></label><label>Reply <select id="reply"><option value="32">32 tokens</option><option value="64">64 tokens</option><option value="96" selected>96 tokens</option><option value="128">128 tokens</option><option value="192">192 tokens</option><option value="256">256 tokens</option></select></label><label>Creativity <input id="temp" type="range" min="0.1" max="1.5" step="0.1" value="0.8"></label><button id="clear">New conversation</button></div>
 <div id="messages" role="log" aria-live="polite"></div><form id="form"><textarea id="prompt" rows="3" maxlength="4000" placeholder="What occupies your thoughts this evening?" required aria-label="Your message"></textarea><div class="bar"><button id="send" type="submit">Send ↗</button><small>Rolling context · oldest tokens fall out when the model window fills.</small></div></form><p id="status" role="status"></p></main>
 <script>const $=id=>document.getElementById(id);let key=new URLSearchParams(location.hash.slice(1)).get('key')||sessionStorage.getItem('history-chat-key')||'';if(key)sessionStorage.setItem('history-chat-key',key);history.replaceState(null,'',location.pathname);let messages=[];const maxContext=Number(document.querySelector('main').dataset.maxContext)||512;for(const option of [...$('context').options])if(Number(option.value)>maxContext)option.remove();$('context').value=$('context').options[$('context').options.length-1].value;
 function add(role,text){const d=document.createElement('div');d.className='message '+role;const label=document.createElement('div');label.className='label';label.textContent=role==='user'?'YOU':'MODEL';const content=document.createElement('div');content.textContent=text;d.append(label,content);$('messages').append(d);$('messages').scrollTop=$('messages').scrollHeight;return content}
@@ -284,7 +292,7 @@ class OllamaSession:
         messages, persona = framed_messages(body, self.persona_profiles, self.persona_rules)
         count, window = int(body.get("max_new_tokens", 64)), int(body.get("context_tokens", 2048))
         temperature = float(body.get("temperature", self.default_temperature))
-        if not 8 <= count <= 128 or not 0.1 <= temperature <= 1.5 or window not in (256, 512, 1024, 2048) or window > self.context or window <= count:
+        if not 8 <= count <= 256 or not 0.1 <= temperature <= 1.5 or window not in (256, 512, 1024, 2048) or window > self.context or window <= count:
             raise ValueError("Invalid native response/context budget")
         messages, ids, original = budget_messages(self.tokenizer, messages, window - count,
             {'enable_thinking': False} if self.disable_thinking else None)

@@ -14,11 +14,15 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path)
     parser.add_argument("--count", type=int, default=2000)
     parser.add_argument("--steps", type=int)
-    parser.add_argument("--reference", choices=["smollm135", "qwen05"], default="smollm135")
+    parser.add_argument("--reference", choices=["smollm135", "smollm360", "qwen05"], default="smollm135")
     parser.add_argument("--blocks", type=int, default=4)
     parser.add_argument("--context", type=int, default=256)
     parser.add_argument("--eval-samples", type=int, default=24)
     parser.add_argument("--retain-candidate", action="store_true", help="Also export the final, unselected full model (uses additional disk space)")
+    parser.add_argument("--target-mode", choices=["first", "all-turns"], default="first", help="Legacy controls use first; social pilots should use all-turns")
+    parser.add_argument("--train-samples", type=int, default=1000)
+    parser.add_argument("--resume", action="store_true", help="Continue the same control checkpoint to the larger total update target")
+    parser.add_argument("--prefix-cache", action="store_true", help="Reuse causal frozen-prefix activations; requires zero prefix dropout and up to 512 MiB extra RAM")
     args = parser.parse_args()
     if args.action == "prepare":
         from vox.public_baseline import prepare_public
@@ -33,7 +37,8 @@ if __name__ == "__main__":
             parser.error("--output must name a new comparison directory")
         from vox.public_control import adapt_control
         report = adapt_control(args.project, args.cache, args.output, args.steps or 60,
-                               args.context, args.reference, args.blocks, args.eval_samples, args.retain_candidate)
+                               args.context, args.reference, args.blocks, args.eval_samples, args.retain_candidate,
+                               args.target_mode, args.train_samples, args.resume, args.prefix_cache)
         print(json.dumps({k: report[k] for k in ("parameter_count", "selected_update", "after_validation", "final_test")}))
     else:
         if not args.output:

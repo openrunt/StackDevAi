@@ -1,4 +1,4 @@
-"""Two-core CPU execution limits and honest per-process memory measurement."""
+"""Two-thread CPU limits, topology-aware placement and per-process memory measurement."""
 
 import os
 import platform
@@ -22,7 +22,10 @@ def limit_cpu(cores=2):
         p = psutil.Process()
         allowed = p.cpu_affinity() if hasattr(p, "cpu_affinity") else []
         if len(allowed) > cores:
-            p.cpu_affinity(allowed[:cores])
+            from .cpu_affinity import physical_core_groups, choose_affinity
+            selected = choose_affinity(allowed, cores, physical_core_groups(allowed))
+            if selected:
+                p.cpu_affinity(selected)
     except (ImportError, NotImplementedError, AttributeError, OSError, ValueError):
         pass
     import torch
@@ -56,6 +59,14 @@ def memory_guard(limit_gb=4.0):
 def environment():
     import torch
 
+    placement = {}
+    try:
+        import psutil
+        process = psutil.Process()
+        placement = {'physical_cpu_count': psutil.cpu_count(logical=False),
+                     'cpu_affinity': process.cpu_affinity() if hasattr(process, 'cpu_affinity') else None}
+    except (ImportError, NotImplementedError, AttributeError, OSError, ValueError):
+        pass
     return dict(
         platform=platform.platform(),
         python=platform.python_version(),
@@ -64,4 +75,5 @@ def environment():
         torch_threads=torch.get_num_threads(),
         rss_bytes=rss_bytes(),
         timestamp=time.time(),
+        **placement,
     )

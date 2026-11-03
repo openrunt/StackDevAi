@@ -4,7 +4,7 @@
 
 ## Public conversation baseline
 
-Version 0.5.2 adds a reproducible public-data experiment and a **separate pretrained
+Version 0.5.3 includes a reproducible public-data experiment and a **separate pretrained
 135M control**. The 48M model still trains from random weights. Both use pinned,
 attributed synthetic conversation material with independent adaptation partitions;
 neither invents audio timestamps. The comparison exports its actual model, provenance,
@@ -41,7 +41,15 @@ and occasional poor reasoning. It is a test candidate, not an unattended podcast
 host. [Results, reproduction details and unfinished work](docs/EXPERIMENT-RESULTS.md)
 distinguish trained weights, prompt improvements and runtime verification.
 
-## 48M research build (0.5.2)
+The [fast conversation control](docs/FAST-CONVERSATION-CONTROL.md) adds a pinned
+360M reference, complete-reply adaptation, single-writer protection and resumable
+optimizer/random state. An optional frozen-prefix cache preserves the tested
+forward outputs and tail gradients, with preparation cost recorded separately.
+The [original cast curriculum](docs/CAST-CONVERSATION-CURRICULUM.md) supplies
+four-speaker conversation histories and holds entire episode topics out. These
+are research tools; neither fast generation nor lower loss establishes host quality.
+
+## 48M research build (0.5.3)
 
 This branch is `xputty-open-weight-48m`. New projects default to a **48,116,224-parameter**
 LLaMA-style decoder: 12 layers, width 512, 8 attention heads, feed-forward width 1,472,
