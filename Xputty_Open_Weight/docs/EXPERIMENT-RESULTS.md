@@ -116,6 +116,13 @@ the branch Actions page for the current result.
 
 ## Still unfinished
 
+The [actual compact-model pilot](COMPACT-MODELS.md) reduces 134,515,008 parameters
+to 46,012,608 with pretrained layer pruning and recovery. Same-precision Q8 files
+shrink from 144,810,944 to 50,679,136 bytes. Native first-text timings improve in
+the small local run, but free language degrades severely. Neither small candidate
+meets the joint goal; a geometry change, smaller file or lower teacher divergence
+alone must not be reported as "a smaller model that knows more and is faster."
+
 The [Phi atlas audit and attention pilots](PHI-ATLAS-EXPERIMENTS.md) now reproduce
 the supplied topology and compare six actual training arms, including the exact
 48,116,224-parameter architecture. Neither short pilot shows a hybrid advantage.

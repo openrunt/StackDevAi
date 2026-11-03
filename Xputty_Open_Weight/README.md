@@ -4,7 +4,7 @@
 
 ## Public conversation baseline
 
-Version 0.5.4 includes a reproducible public-data experiment and a **separate pretrained
+Version 0.5.5 includes a reproducible public-data experiment and a **separate pretrained
 135M control**. The 48M model still trains from random weights. Both use pinned,
 attributed synthetic conversation material with independent adaptation partitions;
 neither invents audio timestamps. The comparison exports its actual model, provenance,
@@ -20,6 +20,12 @@ The [Phi atlas research lab](docs/PHI-ATLAS-EXPERIMENTS.md) reproduces the suppl
 geometry measurements, packages reversible context views and runs six attention
 controls with identical initial weights and token budgets. Actual micro/48M pilots
 are recorded, including their negative result. Dense remains the portable default.
+
+The [compact-model experiment](docs/COMPACT-MODELS.md) actually reduces a 135M
+pretrained teacher to a 46M student and compares CE-only recovery with cached
+teacher-guided recovery. Actual Q8 exports are smaller and faster in the recorded
+session, but their language is broken. They fail the combined capability/size/speed
+goal and are not promoted as usable podcast hosts.
 
 The standalone application lives in `Xputty_Open_Weight/` on the
 `xputty-open-weight-48m` branch of `openrunt/StackDevAi`. An earlier esmoai

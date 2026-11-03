@@ -1,6 +1,6 @@
 {
   "name": "Xputty Open Weight 48M",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "branch": "xputty-open-weight-48m",
   "architecture": {
     "parameters": 48116224,
@@ -11,7 +11,7 @@
     "vocab_size": 8192,
     "max_context": 2048
   },
-  "ci_status": "Per-commit GitHub Actions checks are authoritative; previous 0.5.3 passed at run 41557633993",
+  "ci_status": "Per-commit GitHub Actions are authoritative; 0.5.4 passed at run 41560458063",
   "limitations": [
     "Five-update acceptance model is not a coherent podcast host",
     "Chrome visual acceptance not automated",
@@ -69,17 +69,17 @@
     "full_suite": "passed"
   },
   "current_software_tests": {
-    "full_suite_tests_passed": 67,
-    "full_suite_seconds": 106.26,
+    "full_suite_tests_passed": 70,
+    "full_suite_seconds": 115.84,
     "scope": "Windows CPU, Python 3.10; full 0.5.4 suite and both synthetic-DOM client checks passed",
     "node_ui_state": "passed",
     "node_chat_state": "passed including streamed UTF-8 and actor-role history",
     "real_native_http_stream": "passed; 401 missing token, 403 wrong Origin",
     "chrome_visual_acceptance": "not completed: computer-use runtime cannot write kernel assets",
     "linux_macos_ci": "0.5.2 passed; consult Actions for the new source commit",
-    "previous_ci": "https://github.com/openrunt/StackDevAi/actions/runs/41557633993",
-    "previous_full_suite_tests_passed": 56,
-    "current_collected_tests": 67,
+    "previous_ci": "https://github.com/openrunt/StackDevAi/actions/runs/41560458063",
+    "previous_full_suite_tests_passed": 67,
+    "current_collected_tests": 70,
     "new_focused_checks": "passed: exact HF/GGUF resume, cached gradients, role curriculum, EOS lists, CPU placement and process locks"
   },
   "public_experiments": {
@@ -404,5 +404,136 @@
         "edges": 2098176
       }
     }
+  },
+  "compact_compression": {
+    "objective": "Retained useful capability, actual deployed bytes, and response speed together",
+    "joint_quality_gate_passed": false,
+    "teacher_parameters": 134515008,
+    "student_parameters": 46012608,
+    "source_revision": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+    "models": [
+      {
+        "label": "135M teacher",
+        "precision": "q8_0",
+        "file_bytes": 144810944,
+        "weights_sha256": "71e471ca9e6cf70a5c9ecd3131e595ffd04e9a45ea15810feb85300ff06abd69",
+        "bounded_checks_correct": 2,
+        "bounded_checks_total": 16,
+        "invalid_choice_responses": 0,
+        "warm_first_text_median_seconds": 0.13768155002617277,
+        "median_decode_tokens_per_second": 97.35704247284718
+      },
+      {
+        "label": "46M CE control",
+        "precision": "q8_0",
+        "file_bytes": 50679136,
+        "weights_sha256": "b02a98572406cea1b35a88c6c7630a185bd96d0599e39c0e4771a50e246ba65f",
+        "bounded_checks_correct": 0,
+        "bounded_checks_total": 16,
+        "invalid_choice_responses": 14,
+        "warm_first_text_median_seconds": 0.05053290000068955,
+        "median_decode_tokens_per_second": 175.31282055628074
+      },
+      {
+        "label": "46M distilled",
+        "precision": "q8_0",
+        "file_bytes": 50679136,
+        "weights_sha256": "fb61aaedb51fb7f8b0ab6d5beca54ba00f752c74be04a2a052c78eb0c4047587",
+        "bounded_checks_correct": 5,
+        "bounded_checks_total": 16,
+        "invalid_choice_responses": 3,
+        "warm_first_text_median_seconds": 0.03853845002595335,
+        "median_decode_tokens_per_second": 252.76759412671018
+      }
+    ],
+    "compact46-ce-v1": {
+      "completed_updates": 256,
+      "selected_update": 224,
+      "selected_layers": [
+        0,
+        7,
+        14,
+        22,
+        29
+      ],
+      "before_validation": {
+        "assistant_nll": 17.77184030447996,
+        "temperature_scaled_teacher_kl": 14.661075562975158,
+        "target_tokens": 607
+      },
+      "selected_validation": {
+        "assistant_nll": 5.794154652653652,
+        "temperature_scaled_teacher_kl": 5.354302194798012,
+        "target_tokens": 607
+      },
+      "final_test": {
+        "assistant_nll": 5.294807880329636,
+        "temperature_scaled_teacher_kl": 3.424260741809629,
+        "target_tokens": 530
+      },
+      "teacher_nll": {
+        "train": 2.423574521431468,
+        "val": 2.101137924822787,
+        "test": 2.523952908785838
+      },
+      "weights_sha256": "ec1cbc3313af4e48d89579c6d277608acc49c175a3fa3af35733a4f4d5e0592e",
+      "hf_file_bytes": 184055648,
+      "trained_parameters": 17701056,
+      "hf_runtime": {
+        "loaded_without_missing_or_unexpected_keys": true,
+        "selected_trainable_tensors_match": 46,
+        "frozen_embedding_matches_upstream": true,
+        "weights_sha256": "ec1cbc3313af4e48d89579c6d277608acc49c175a3fa3af35733a4f4d5e0592e",
+        "selected_update": 224
+      }
+    },
+    "compact46-kd-v1": {
+      "completed_updates": 256,
+      "selected_update": 224,
+      "selected_layers": [
+        0,
+        7,
+        14,
+        22,
+        29
+      ],
+      "before_validation": {
+        "assistant_nll": 17.77184030447996,
+        "temperature_scaled_teacher_kl": 14.661075562975158,
+        "target_tokens": 607
+      },
+      "selected_validation": {
+        "assistant_nll": 5.871648351678738,
+        "temperature_scaled_teacher_kl": 4.50895078688909,
+        "target_tokens": 607
+      },
+      "final_test": {
+        "assistant_nll": 5.344155970159567,
+        "temperature_scaled_teacher_kl": 2.6815773489340295,
+        "target_tokens": 530
+      },
+      "teacher_nll": {
+        "train": 2.423574521431468,
+        "val": 2.101137924822787,
+        "test": 2.523952908785838
+      },
+      "weights_sha256": "99eb47315dc83989f6a316d9547f5d8be118cb25b6467911be0dab6f7a7d52b6",
+      "hf_file_bytes": 184055648,
+      "trained_parameters": 17701056,
+      "hf_runtime": {
+        "loaded_without_missing_or_unexpected_keys": true,
+        "selected_trainable_tensors_match": 46,
+        "frozen_embedding_matches_upstream": true,
+        "weights_sha256": "99eb47315dc83989f6a316d9547f5d8be118cb25b6467911be0dab6f7a7d52b6",
+        "selected_update": 224
+      }
+    },
+    "limitations": [
+      "Sixteen authored checks are a small development sample, not general knowledge equivalence",
+      "Forced-choice decoding constrains answer format; free responses are unconstrained and reviewed separately",
+      "Same precision is required for a parameter-reduction claim; actual file hashes are recorded",
+      "First text is not first audio; four replies do not establish podcast performance",
+      "Pretraining contamination is unknown; no unattended-host acceptance is implied"
+    ]
   }
 }
