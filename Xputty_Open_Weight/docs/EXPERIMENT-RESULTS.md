@@ -116,6 +116,12 @@ the branch Actions page for the current result.
 
 ## Still unfinished
 
+The [Phi atlas audit and attention pilots](PHI-ATLAS-EXPERIMENTS.md) now reproduce
+the supplied topology and compare six actual training arms, including the exact
+48,116,224-parameter architecture. Neither short pilot shows a hybrid advantage.
+Reversible context packages recover exactly, but learned phase-consistent
+distillation and semantic near-miss improvement remain unproven.
+
 - Compelling, consistently coherent conversation on unseen topics. A lower loss
   and a valid exported file are insufficient. More examples, controlled behavioral
   comparisons and independent review remain necessary.

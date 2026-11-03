@@ -382,7 +382,7 @@ if __name__ == "__main__":
     p.add_argument("--stage", choices=["base", "chat"], default="base")
     p.add_argument(
         "--experiment",
-        choices=["dense", "fibra", "fibra-golden", "phi-pos"],
+        choices=["dense", "fibra", "fibra-golden", "fibra-dual", "fibra-counter", "fibra-random", "phi-pos"],
         default="dense",
     )
     p.add_argument("--steps", type=int, default=50)

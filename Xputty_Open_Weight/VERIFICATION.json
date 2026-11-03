@@ -1,6 +1,6 @@
 {
   "name": "Xputty Open Weight 48M",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "branch": "xputty-open-weight-48m",
   "architecture": {
     "parameters": 48116224,
@@ -11,7 +11,7 @@
     "vocab_size": 8192,
     "max_context": 2048
   },
-  "ci_status": "Per-commit GitHub Actions checks are authoritative; previous 0.5.2 accepted at run 41521419277",
+  "ci_status": "Per-commit GitHub Actions checks are authoritative; previous 0.5.3 passed at run 41557633993",
   "limitations": [
     "Five-update acceptance model is not a coherent podcast host",
     "Chrome visual acceptance not automated",
@@ -69,17 +69,17 @@
     "full_suite": "passed"
   },
   "current_software_tests": {
-    "full_suite_tests_passed": 56,
-    "full_suite_seconds": 107.76,
-    "scope": "Windows CPU, Python 3.10; synthetic DOM checked separately",
+    "full_suite_tests_passed": 67,
+    "full_suite_seconds": 106.26,
+    "scope": "Windows CPU, Python 3.10; full 0.5.4 suite and both synthetic-DOM client checks passed",
     "node_ui_state": "passed",
     "node_chat_state": "passed including streamed UTF-8 and actor-role history",
     "real_native_http_stream": "passed; 401 missing token, 403 wrong Origin",
     "chrome_visual_acceptance": "not completed: computer-use runtime cannot write kernel assets",
     "linux_macos_ci": "0.5.2 passed; consult Actions for the new source commit",
-    "previous_ci": "https://github.com/openrunt/StackDevAi/actions/runs/41521419277",
-    "previous_full_suite_tests_passed": 44,
-    "current_collected_tests": 56,
+    "previous_ci": "https://github.com/openrunt/StackDevAi/actions/runs/41557633993",
+    "previous_full_suite_tests_passed": 56,
+    "current_collected_tests": 67,
     "new_focused_checks": "passed: exact HF/GGUF resume, cached gradients, role curriculum, EOS lists, CPU placement and process locks"
   },
   "public_experiments": {
@@ -231,6 +231,14 @@
           "F16 storage rounding and native quantized activation arithmetic are not bit-identical",
           "Successful loading and two replies do not establish conversational quality"
         ]
+      },
+      "native_http": {
+        "unauthorized": 401,
+        "wrong_origin": 403,
+        "first_delta_seconds": 0.15700029995059595,
+        "total_seconds": 3.8784541999921203,
+        "conditions": "Actual native HTTP, other local checks may run; not an isolated latency benchmark",
+        "max_256_available_in_page": true
       }
     }
   },
@@ -257,5 +265,144 @@
     "requested_torch_threads": 2,
     "note": "Earlier Torch timings used sibling logical processors on one physical core. Native Ollama placement is separate."
   },
-  "artifact_retention": "Native controls and selected weights retained; redundant older HF shards/full control export compacted with local hash manifests"
+  "artifact_retention": "Native controls and selected weights retained; redundant older HF shards/full control export compacted with local hash manifests",
+  "phi_research": {
+    "atlas_zip_sha256": "59472140e13fc1c90561e10dc47534f0eb73ff1209103628e3f42577cde9de57",
+    "all_2048_json_and_csv_rows_match": true,
+    "model_default_changed": false,
+    "semantic_improvement_established": false,
+    "dense_kernel_speedup_established": false,
+    "phase_view_counts": {
+      "schema": "xow-phase-view-package/1",
+      "source_sha256": "14068db1de3b3658fb4071de90eb0de48dfc86cce4811d588ca2d3fd6ca61d24",
+      "records": 96,
+      "views": 384,
+      "source_groups": 24,
+      "split_counts": {
+        "train": 64,
+        "val": 16,
+        "test": 16
+      },
+      "tokenizer": "storage\\b150b150b150b150b150b150b1500004\\export",
+      "token_counts": {
+        "canonical": {
+          "context_tokens": 24513,
+          "records": 96
+        },
+        "characters": {
+          "context_tokens": 42733,
+          "records": 96
+        },
+        "words": {
+          "context_tokens": 24507,
+          "records": 96
+        },
+        "turns": {
+          "context_tokens": 24513,
+          "records": 96
+        }
+      },
+      "limitations": [
+        "Research view package, not a trained or distilled model",
+        "Recovery is exact software reversal, not learned semantic retention",
+        "Targets and system prompts remain canonical; raw reordered context must not be treated as causal dialogue",
+        "Equal characters do not imply equal tokens; duplicated views require matched total training budgets",
+        "No teacher KL, contrastive training or near-miss semantic improvement is claimed"
+      ],
+      "views_sha256": "329ee68988ab3f94cb782eb8b6031ab8b9c03d0522c4c0459ee613290bd1b5d5"
+    },
+    "micro": {
+      "steps_per_arm": 32,
+      "seeds": [
+        739,
+        751,
+        761
+      ],
+      "context": 512,
+      "parameters": 537696,
+      "completed_arms": 18,
+      "mean_test_loss": {
+        "dense": 8.71441106001536,
+        "fibra": 8.724730173746744,
+        "fibra-counter": 8.724807739257812,
+        "fibra-dual": 8.724441687266031,
+        "fibra-golden": 8.724990526835123,
+        "fibra-random": 8.724275509516398
+      },
+      "report_sha256": "f4833e6dd370cecb3b539aee5fdd9d267dfc3cd451327f3a8ab53d06358185a2"
+    },
+    "48m": {
+      "steps_per_arm": 8,
+      "seeds": [
+        739
+      ],
+      "context": 512,
+      "parameters": 48116224,
+      "completed_arms": 6,
+      "mean_test_loss": {
+        "dense": 7.589329719543457,
+        "fibra": 7.620587944984436,
+        "fibra-counter": 7.624646186828613,
+        "fibra-dual": 7.621749997138977,
+        "fibra-golden": 7.619065523147583,
+        "fibra-random": 7.616851210594177
+      },
+      "report_sha256": "61f57e8e156e4255b157fe267cb0ccfcf36a37271f2b80d6aa65ba1b4c22f905"
+    },
+    "720_degree_controls": {
+      "golden": {
+        "edges": 51596,
+        "changed_rows_from_hybrid": 1834,
+        "same_row_degrees_as_golden": true,
+        "mask_sha256": "e4b85d4967ec5863ff961aababc13510f9e653478970733006c9aa912e467342"
+      },
+      "custom": {
+        "edges": 51748,
+        "changed_rows_from_hybrid": 0,
+        "same_row_degrees_as_golden": false,
+        "mask_sha256": "2813794a49b7ec640c82bd64bde8aecd5cc73767aff30cc0eb36598d833ffaba"
+      },
+      "dual": {
+        "edges": 51596,
+        "changed_rows_from_hybrid": 1774,
+        "same_row_degrees_as_golden": true,
+        "mask_sha256": "e17644236951eda8cf2fd368525ff9fcd12b7e869030254018b17cfb860fd838"
+      },
+      "counter": {
+        "edges": 51835,
+        "changed_rows_from_hybrid": 1924,
+        "same_row_degrees_as_golden": false,
+        "mask_sha256": "c52ccecb1cb6fab5a1e1c08523c671b41a8368556c758a00747a34bdafb075f9"
+      },
+      "random": {
+        "edges": 51596,
+        "changed_rows_from_hybrid": 2028,
+        "same_row_degrees_as_golden": true,
+        "mask_sha256": "fab3835ef74f0406d88ca479eb4b1dcd4f852004700719e7bb3ca277f8fb7cbf"
+      },
+      "rotate720": {
+        "edges": 51748,
+        "changed_rows_from_hybrid": 0,
+        "same_row_degrees_as_golden": false,
+        "mask_sha256": "2813794a49b7ec640c82bd64bde8aecd5cc73767aff30cc0eb36598d833ffaba"
+      },
+      "sweep720": {
+        "edges": 55651,
+        "changed_rows_from_hybrid": 2013,
+        "same_row_degrees_as_golden": false,
+        "mask_sha256": "32a954544a0991f0958f93de07bf87927073ced09bbf2ffc4a6372a90d833e39"
+      },
+      "hybrid_32_neighbors": {
+        "edges": 96883,
+        "geometric_neighbor_budget": 32
+      },
+      "golden_hybrid_union": {
+        "edges": 56776,
+        "budget_matched": false
+      },
+      "dense_causal": {
+        "edges": 2098176
+      }
+    }
+  }
 }

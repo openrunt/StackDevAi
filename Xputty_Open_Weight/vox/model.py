@@ -12,7 +12,7 @@ import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .topology import PHI_CUSTOM, torch_mask
+from .topology import PHI_CUSTOM, MASK_EXPERIMENTS, torch_mask
 
 
 @dataclass
@@ -25,7 +25,7 @@ class ModelConfig:
     context: int = 256
     norm_eps: float = 1e-5
     rope_theta: float = 10000.0
-    experiment: str = "dense"  # dense, fibra, phi-pos, fibra-golden
+    experiment: str = "dense"  # Only dense has ordinary portable attention semantics.
     bos_token_id: int = 1
     eos_token_id: int = 2
     pad_token_id: int = 3
@@ -39,7 +39,7 @@ class ModelConfig:
             raise ValueError("R02 size limit")
         if self.vocab_size < 256 or self.vocab_size > 32000:
             raise ValueError("vocab out of range")
-        if self.experiment not in ("dense", "fibra", "phi-pos", "fibra-golden"):
+        if self.experiment not in ("dense", "phi-pos", *MASK_EXPERIMENTS):
             raise ValueError("invalid experiment type")
         return self
 
@@ -98,7 +98,7 @@ class Attention(nn.Module):
         if past is not None:
             k = torch.cat((past[0], k), dim=-2)
             v = torch.cat((past[1], v), dim=-2)
-        if self.c.experiment in ("fibra", "fibra-golden") and T > 1:
+        if self.c.experiment in MASK_EXPERIMENTS:
             if past is not None:
                 raise ValueError(
                     "research FIBRA mask only supports full-sequence inference"
@@ -106,7 +106,7 @@ class Attention(nn.Module):
             mask = torch_mask(
                 T,
                 x.device,
-                angle=("golden" if self.c.experiment == "fibra-golden" else "custom"),
+                angle=MASK_EXPERIMENTS[self.c.experiment],
             )
             y = F.scaled_dot_product_attention(
                 q, k, v, attn_mask=mask, is_causal=False, dropout_p=0.0
@@ -242,7 +242,7 @@ def generate(
     cache = None
     out = list(ids)
     for step in range(max_new_tokens):
-        if model.config.experiment in ("fibra", "fibra-golden"):
+        if model.config.experiment in MASK_EXPERIMENTS:
             inp = torch.tensor(out[-model.config.context :], dtype=torch.long)[None, :]
             logits, _ = model(inp)
         else:
@@ -259,7 +259,7 @@ def generate(
             tok == stop_id or isinstance(stop_id, (set, tuple, list)) and tok in stop_id
         ):
             break
-        if model.config.experiment in ("fibra", "fibra-golden"):
+        if model.config.experiment in MASK_EXPERIMENTS:
             continue
         # For standard model use cache until max context, then re-prefill trimmed window.
         if len(out) >= model.config.context:
